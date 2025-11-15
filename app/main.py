@@ -1,0 +1,32 @@
+# app/main.py
+from fastapi import FastAPI
+
+# 1. 导入您的主 API 路由器和配置
+from app.api.api import api_router
+from app.core.config import settings
+
+# 2. (重要) 导入所有数据库模型，以确保 SQLAlchemy 在启动时能识别它们
+#    这是解决运行时 "failed to locate a name" 错误的关键
+from app.models import user_management
+from app.models import question_management
+from app.models import assessment_management
+
+# 3. 创建 FastAPI 应用实例
+app = FastAPI(
+    title=settings.APP_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
+
+# 4. (重要) 移除 startup 事件中的 create_all。
+#    我们完全信任 Alembic 来管理数据库迁移。
+
+# 5. 添加一个健康的根路径，用于检查服务是否存活
+@app.get("/", tags=["Health Check"])
+def health_check():
+    """
+    健康检查端点。
+    """
+    return {"status": "ok", "app_name": settings.APP_NAME}
+
+# 6. 将您的主 API 路由器包含进来，并添加统一的前缀
+app.include_router(api_router, prefix=settings.API_V1_STR)
