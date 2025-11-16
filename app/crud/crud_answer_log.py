@@ -1,71 +1,67 @@
-# app/crud/crud_answer_log.py
-from sqlalchemy.orm import Session, joinedload
-from datetime import datetime  # <--- 就是这一行！
+# app/crud/crud_answer_log.py (最终、最健-壮、最正确版本)
+from sqlalchemy.orm import Session
+from datetime import datetime
 from typing import Tuple
 
 from app.crud.base import CRUDBase
 from app.models.assessment_management import AnswerLog, AssessmentResult
-from app.models.question_management import Question, Option, QuestionType # 导入 QuestionType 以便使用
 from app.schemas.examinee import SubmitAnswerRequest
 from pydantic import BaseModel
 
 class CRUDAnswerLog(CRUDBase[AnswerLog, SubmitAnswerRequest, BaseModel]):
     def calculate_and_log_answer(
-        self,
-        db: Session,
-        *,
-        result: AssessmentResult,
-        answer_in: SubmitAnswerRequest
+        self, db: Session, *, result: AssessmentResult, answer_in: SubmitAnswerRequest, answer_map: dict
     ) -> Tuple[int, bool]:
         """
-        核心计分逻辑：计算得分，记录日志，并更新总分。
-        返回 (本次得分, 是否完全正确)
+        核心计分逻辑（最终防御性版本）
         """
-        # 1. 获取题目详情，并预加载其正确选项
-        question = (
-            db.query(Question)
-            .options(joinedload(Question.options))
-            .filter(Question.id == answer_in.question_id)
-            .first()
-        )
-        if not question:
-            raise ValueError("Question not found")
-
-        # 2. 找出所有正确选项的 ID
-        correct_option_ids = {opt.id for opt in question.options if opt.is_correct}
+        if not answer_in.selected_option_ids:
+            raise ValueError("No options submitted.")
         
-        # 3. 计算得分和是否正确
+        # --- 提取题目信息 ---
+        first_option_id_str = str(answer_in.selected_option_ids[0])
+        if first_option_id_str not in answer_map:
+            raise ValueError(f"Invalid option ID {first_option_id_str} submitted.")
+        
+        question_info = answer_map[first_option_id_str]
+        question_id = question_info['question_id']
+        question_score = question_info['question_score']
+        question_type = question_info['question_type']
+        
+        # --- 找出该题目的所有正确答案 ---
+        correct_option_ids = set()
+        for opt_id, info in answer_map.items():
+            # 使用严格的、防御性的检查
+            if info.get('question_id') == question_id and info.get('is_correct') is True:
+                correct_option_ids.add(int(opt_id))
+
+        # --- 进行计分 ---
         score_awarded = 0
         is_correct = False
-        
         submitted_option_ids = set(answer_in.selected_option_ids)
 
-        # 使用 QuestionType 枚举进行比较，更健壮
-        if question.question_type == QuestionType.SINGLE_CHOICE:
-            if submitted_option_ids == correct_option_ids:
-                score_awarded = question.score
-                is_correct = True
-        elif question.question_type == QuestionType.MULTIPLE_CHOICE:
-            if submitted_option_ids == correct_option_ids:
-                score_awarded = question.score
-                is_correct = True
+        # 核心判断：两个整数集合必须完全相等
+        if submitted_option_ids == correct_option_ids:
+            score_awarded = question_score
+            is_correct = True
             
-        # 4. 创建答题日志
-        new_log = AnswerLog(
+        # --- 记录日志 ---
+        # 核心修正：SQLAlchemy 的 JSON 类型会自动处理序列化，我们只需要传递 Python 列表
+        db_log = AnswerLog(
             result_id=result.id,
-            question_id=answer_in.question_id,
-            selected_option_ids=answer_in.selected_option_ids,
+            question_id=question_id,
+            selected_option_ids=answer_in.selected_option_ids, # <--- 直接传递列表
             score_awarded=score_awarded,
-            answered_at=datetime.utcnow() # 现在 datetime 是已知的了
+            answered_at=datetime.utcnow()
         )
-        db.add(new_log)
+        db.add(db_log)
         
-        # 5. 更新考核会话的总分
+        # --- 更新总分 ---
         result.total_score = (result.total_score or 0) + score_awarded
         db.add(result)
         
-        # 6. 一次性提交
         db.commit()
+        db.refresh(result)
         
         return score_awarded, is_correct
 

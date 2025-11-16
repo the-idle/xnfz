@@ -59,40 +59,58 @@
 #     is_correct: bool # 告知客户端本次回答是否正确
 
 # app/schemas/examinee.py
-from pydantic import BaseModel, Field
-from typing import List
-
-# --- 蓝图结构 ---
+from pydantic import BaseModel
+from typing import List, Optional
+# --- 蓝图结构 (Blueprint) ---
 class BlueprintOption(BaseModel):
-    answer_id: int
+    """
+    下发给客户端的选项结构
+    """
+    id: int # <--- 核心修改：直接下发 option.id
     option_text: str
 
 class BlueprintQuestion(BaseModel):
-    question_id: int
+    """
+    下发给客户端的题目结构
+    """
+    id: int # <--- 核心修改：直接下发 question.id
     scene_identifier: str
     prompt: str
     question_type: str
     score: int
-    image_url: str | None = None
+    image_url: Optional[str] = None
     options: List[BlueprintOption]
 
 class BlueprintProcedure(BaseModel):
-    procedure_id: int
-    procedure_name: str
+    """
+    下发给客户端的工序/点位结构
+    """
+    id: int # <--- 核心修改：直接下发 procedure.id
+    name: str # <--- 核心修改：直接下发 procedure.name
     questions: List[BlueprintQuestion]
 
-# --- API 请求和响应 ---
 class AssessmentStartRequest(BaseModel):
     examinee_identifier: str
 
 class AssessmentBlueprintResponse(BaseModel):
+    """
+    开始/继续考核的响应体 (最终版)
+    """
     assessment_result_id: int
-    procedures: List[BlueprintProcedure]
+    procedures: List[BlueprintProcedure] # <--- 返回结构化的蓝图
 
+# --- 提交答案的 Schema (SubmitAnswerRequest) ---
 class SubmitAnswerRequest(BaseModel):
-    selected_answer_ids: List[int] # <--- 核心修改
+    examinee_identifier: str # <--- 新增，用于校验考生身份
+    procedure_id: int # <--- 明确点位ID
+    question_id: int # <--- 明确题目ID
+    selected_option_ids: List[int] # <--- 核心修改：提交真实的 option.id
 
 class SubmitAnswerResponse(BaseModel):
     status: str
     score_awarded: int
     is_correct: bool
+
+# --- 结束考核的 Schema (FinishAssessmentRequest) ---
+class FinishAssessmentRequest(BaseModel):
+    examinee_identifier: str # <--- 新增，用于校验考生身份

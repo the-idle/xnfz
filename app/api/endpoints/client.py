@@ -1,130 +1,94 @@
 # app/api/endpoints/client.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime,timezone 
 
 from app import schemas
 from app.api import deps
 from app.api import deps
 from app.crud.crud_assessment_result import crud_assessment_result
 from app.crud.crud_examinee import crud_examinee
-from app.crud.crud_assessment import crud_assessment # 现在这个名字明确指向实例
+from app.crud.crud_assessment import crud_assessment
 from app.crud.crud_answer_log import crud_answer_log
 from app.crud.crud_question import crud_question
 from app.crud.crud_blueprint import (
-    generate_answer_map_and_blueprint, cache_blueprint_and_map, get_cached_answer_map
+    build_assessment_blueprint,
+    generate_and_cache_answer_map,
+    get_cached_answer_map
 )
 from app.models.assessment_management import AssessmentResult
+from app.models.question_management import Question 
+from app.schemas.examinee import BlueprintProcedure
 
 router = APIRouter()
 
-@router.post(
-    "/assessments/{assessment_id}/session",
-    response_model=schemas.AssessmentBlueprintResponse
-)
-def start_or_resume_assessment_session(
-    assessment_id: int,
-    *,
-    db: Session = Depends(deps.get_db),
-    start_request: schemas.AssessmentStartRequest
-):
+@router.post("/assessments/{assessment_id}/session", response_model=schemas.AssessmentBlueprintResponse)
+def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depends(deps.get_db), start_request: schemas.AssessmentStartRequest):
     assessment = crud_assessment.get(db=db, id=assessment_id)
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-        
+    if not assessment: raise HTTPException(status_code=404, detail="Assessment not found")
+
+    now_utc = datetime.now(timezone.utc)
+    start_time_utc = assessment.start_time.replace(tzinfo=timezone.utc)
+    end_time_utc = assessment.end_time.replace(tzinfo=timezone.utc)
+    if now_utc < start_time_utc: raise HTTPException(status_code=403, detail="Assessment has not started yet.")
+    if now_utc > end_time_utc: raise HTTPException(status_code=403, detail="Assessment has already ended.")
+
     examinee = crud_examinee.get_or_create_by_identifier(db=db, identifier=start_request.examinee_identifier)
     session = crud_assessment_result.get_active_session(db=db, assessment_id=assessment_id, examinee_id=examinee.id)
-    
+
     if not session:
-        session = AssessmentResult(
-            assessment_id=assessment_id,
-            examinee_id=examinee.id,
-            start_time=datetime.utcnow()
-        )
+        session = AssessmentResult(assessment_id=assessment_id, examinee_id=examinee.id, start_time=datetime.utcnow())
         db.add(session)
-        db.commit()
-        db.refresh(session)
-        
-        # 首次开始，生成并缓存蓝图
-        blueprint, answer_map = generate_answer_map_and_blueprint(db=db, question_bank_id=assessment.question_bank_id)
-        cache_blueprint_and_map(session.id, blueprint, answer_map)
+        db.commit(); db.refresh(session)
+        generate_and_cache_answer_map(db=db, session_id=session.id, question_bank_id=assessment.question_bank_id)
+
+    blueprint = build_assessment_blueprint(db=db, question_bank_id=assessment.question_bank_id)
+    answered_ids = crud_assessment_result.get_answered_question_ids(db=db, result_id=session.id)
+    
+    if answered_ids:
+        filtered_procedures = []
+        for proc in blueprint:
+            remaining_questions = [q for q in proc.questions if q.id not in answered_ids]
+            if remaining_questions:
+                filtered_procedures.append(BlueprintProcedure(id=proc.id, name=proc.name, questions=remaining_questions))
+        blueprint_to_return = filtered_procedures
     else:
-        # 断点续考，从缓存或其他地方获取蓝图
-        # (简化逻辑：此处重新生成。实际项目中应从缓存读取)
-        blueprint, _ = generate_answer_map_and_blueprint(db=db, question_bank_id=assessment.question_bank_id)
+        blueprint_to_return = blueprint
 
-    # TODO: 断点续考时，应根据 answered_logs 从 blueprint 中移除已回答的问题
+    return {"assessment_result_id": session.id, "procedures": blueprint_to_return}
 
-    return {
-        "assessment_result_id": session.id,
-        "procedures": blueprint
-    }
 
-@router.post(
-    "/assessment-results/{result_id}/answer",
-    response_model=schemas.SubmitAnswerResponse
-)
-def submit_answer(
-    result_id: int,
-    *,
-    db: Session = Depends(deps.get_db),
-    answer_in: schemas.SubmitAnswerRequest
-):
+@router.post("/assessment-results/{result_id}/answer", response_model=schemas.SubmitAnswerResponse)
+def submit_answer(result_id: int, *, db: Session = Depends(deps.get_db), answer_in: schemas.SubmitAnswerRequest):
     result = crud_assessment_result.get(db=db, id=result_id)
-    if not result or result.end_time:
-        raise HTTPException(status_code=404, detail="Session not found or already finished")
+    if not result or result.end_time: raise HTTPException(status_code=404, detail="Session not found or already finished")
 
-    # 从缓存获取答案映射
+    examinee = crud_examinee.get(db=db, id=result.examinee_id)
+    if not examinee or examinee.identifier != answer_in.examinee_identifier: raise HTTPException(status_code=403, detail="Examinee identifier mismatch.")
+
     answer_map = get_cached_answer_map(result_id)
-    if not answer_map:
-        raise HTTPException(status_code=500, detail="Assessment blueprint not found. Please restart the session.")
+    if not answer_map: raise HTTPException(status_code=500, detail="Cache lost. Please restart session.")
+    
+    answered_ids = crud_assessment_result.get_answered_question_ids(db=db, result_id=result_id)
+    if answer_in.question_id in answered_ids: raise HTTPException(status_code=400, detail="Question already answered.")
 
-    # 提交答案的计分逻辑也需要重构
-    # (此处省略具体实现，但核心是使用 answer_map 将 answer_id 转换为 option_id 和 question_id)
-    
-    # 示例简化逻辑
-    score_awarded = 0
-    is_correct = True
-    for answer_id in answer_in.selected_answer_ids:
-        if str(answer_id) not in answer_map or not answer_map[str(answer_id)]['is_correct']:
-            is_correct = False
-            break
-    
-    if is_correct:
-        first_answer_id = str(answer_in.selected_answer_ids[0])
-        question_id = answer_map[first_answer_id]['question_id']
-        question = crud_question.get(db=db, id=question_id)
-        score_awarded = question.score if question else 0
-
-    # TODO: 记录 AnswerLog
-    
-    return {
-        "status": "success",
-        "score_awarded": score_awarded,
-        "is_correct": is_correct
-    }
+    try:
+        score_awarded, is_correct = crud_answer_log.calculate_and_log_answer(db=db, result=result, answer_in=answer_in, answer_map=answer_map)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    return {"status": "success", "score_awarded": score_awarded, "is_correct": is_correct}
 
 @router.post("/assessment-results/{result_id}/finish")
-def finish_assessment(
-    result_id: int,
-    db: Session = Depends(deps.get_db)
-):
-    """
-    Unity 客户端：完成并提交整场考核。
-    """
-    # 1. 查找考核会话
+def finish_assessment(result_id: int, *, db: Session = Depends(deps.get_db), finish_request: schemas.FinishAssessmentRequest):
     result = crud_assessment_result.get(db=db, id=result_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Assessment session not found")
-        
-    # 2. 检查考核是否已结束
-    if result.end_time:
-        raise HTTPException(status_code=400, detail="Assessment has already been finished")
-        
-    # 3. 更新结束时间并保存
-    result.end_time = datetime.utcnow()
-    db.add(result)
-    db.commit()
+    if not result: raise HTTPException(status_code=404, detail="Session not found")
     
-    # 4. 返回最终结果
+    examinee = crud_examinee.get(db=db, id=result.examinee_id)
+    if not examinee or examinee.identifier != finish_request.examinee_identifier: raise HTTPException(status_code=403, detail="Examinee identifier mismatch.")
+
+    if result.end_time: raise HTTPException(status_code=400, detail="Assessment has already been finished.")
+        
+    result.end_time = datetime.utcnow()
+    db.add(result); db.commit()
     return {"status": "finished", "final_score": result.total_score}

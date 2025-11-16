@@ -61,15 +61,11 @@ from .examinee import (
     AssessmentStartRequest,      # <--- 补上这个
     SubmitAnswerRequest,         # <--- 补上这个
     SubmitAnswerResponse,        # <--- 补上这个
-
     BlueprintOption,
     BlueprintQuestion,
     BlueprintProcedure,
-
-    AssessmentStartRequest,
     AssessmentBlueprintResponse,
-    SubmitAnswerRequest,
-    SubmitAnswerResponse
+    FinishAssessmentRequest
 )
 
 

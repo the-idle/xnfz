@@ -1,17 +1,13 @@
-# app/crud/crud_blueprint.py
+# app/crud/crud_blueprint.py (最终、最简化、最正确版本)
 from sqlalchemy.orm import Session, subqueryload, joinedload
-from app.models.question_management import QuestionBank, Procedure, Question, Option
-from datetime import datetime
+from app.models.question_management import QuestionBank, Procedure, Question
+from app.schemas.examinee import BlueprintProcedure, BlueprintQuestion, BlueprintOption
 import json
-from redis import Redis # 假设使用 Redis 缓存
+from typing import List
 
-# 模拟一个缓存（实际项目中应使用 Redis 或类似工具）
-blueprint_cache = {}
+cache = {} # 简单的内存缓存
 
-def generate_answer_map_and_blueprint(db: Session, *, question_bank_id: int):
-    """
-    构建结构化的考核蓝图，并生成一个 answer_id -> option_id 的映射
-    """
+def build_assessment_blueprint(db: Session, *, question_bank_id: int) -> List[BlueprintProcedure]:
     bank = (
         db.query(QuestionBank)
         .options(
@@ -19,66 +15,37 @@ def generate_answer_map_and_blueprint(db: Session, *, question_bank_id: int):
             .subqueryload(Procedure.questions)
             .joinedload(Question.options)
         )
-        .filter(QuestionBank.id == question_bank_id)
-        .first()
+        .filter(QuestionBank.id == question_bank_id).first()
     )
+    if not bank: return []
 
-    if not bank:
-        return [], {}
+    procedures = []
+    for proc in sorted(bank.procedures, key=lambda p: p.id):
+        questions = []
+        for q in sorted(proc.questions, key=lambda q: q.id):
+            options = [BlueprintOption(id=opt.id, option_text=opt.option_text) for opt in q.options]
+            questions.append(BlueprintQuestion(
+                id=q.id, scene_identifier=q.scene_identifier, prompt=q.prompt,
+                question_type=q.question_type.value, score=q.score, image_url=q.image_url, options=options
+            ))
+        procedures.append(BlueprintProcedure(id=proc.id, name=proc.name, questions=questions))
+    return procedures
 
-    blueprint_procedures = []
+def generate_and_cache_answer_map(db: Session, *, session_id: int, question_bank_id: int):
     answer_map = {}
-    answer_id_counter = 1
-
-    sorted_procedures = sorted(bank.procedures, key=lambda p: p.id)
-
-    for proc in sorted_procedures:
-        blueprint_questions = []
-        sorted_questions = sorted(proc.questions, key=lambda q: q.id)
-        
-        for q in sorted_questions:
-            blueprint_options = []
-            for opt in q.options:
-                answer_map[answer_id_counter] = {
-                    "option_id": opt.id,
-                    "question_id": q.id,
-                    "is_correct": opt.is_correct
-                }
-                blueprint_options.append({
-                    "answer_id": answer_id_counter,
-                    "option_text": opt.option_text,
-                })
-                answer_id_counter += 1
-            
-            blueprint_questions.append({
+    questions = db.query(Question).join(Procedure).filter(Procedure.question_bank_id == question_bank_id).options(joinedload(Question.options)).all()
+    
+    for q in questions:
+        for opt in q.options:
+            answer_map[str(opt.id)] = {
                 "question_id": q.id,
-                "scene_identifier": q.scene_identifier,
-                "prompt": q.prompt,
-                "question_type": q.question_type.value,
-                "score": q.score,
-                "image_url": q.image_url,
-                "options": blueprint_options,
-            })
-        
-        blueprint_procedures.append({
-            "procedure_id": proc.id,
-            "procedure_name": proc.name,
-            "questions": blueprint_questions,
-        })
-        
-    return blueprint_procedures, answer_map
+                "procedure_id": q.procedure_id,
+                "is_correct": opt.is_correct,
+                "question_score": q.score,
+                "question_type": q.question_type.value
+            }
+    cache[f"answer_map:{session_id}"] = json.dumps(answer_map)
 
-def cache_blueprint_and_map(session_id: int, blueprint: list, answer_map: dict):
-    """
-    将蓝图和答案映射缓存起来（实际应使用 Redis）
-    """
-    # 使用简单的字典模拟 Redis
-    blueprint_cache[f"blueprint:{session_id}"] = json.dumps(blueprint)
-    blueprint_cache[f"answer_map:{session_id}"] = json.dumps(answer_map)
-
-def get_cached_answer_map(session_id: int):
-    """
-    从缓存中获取答案映射
-    """
-    answer_map_json = blueprint_cache.get(f"answer_map:{session_id}")
+def get_cached_answer_map(session_id: int) -> dict | None:
+    answer_map_json = cache.get(f"answer_map:{session_id}")
     return json.loads(answer_map_json) if answer_map_json else None
