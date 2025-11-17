@@ -4,6 +4,9 @@ from fastapi import FastAPI
 # 1. 导入您的主 API 路由器和配置
 from app.api.api import api_router
 from app.core.config import settings
+from fastapi.exceptions import HTTPException
+from app.core.exceptions import http_exception_handler, BusinessException, business_exception_handler
+
 
 # 2. (重要) 导入所有数据库模型，以确保 SQLAlchemy 在启动时能识别它们
 #    这是解决运行时 "failed to locate a name" 错误的关键
@@ -17,6 +20,8 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(BusinessException, business_exception_handler)
 # 4. (重要) 移除 startup 事件中的 create_all。
 #    我们完全信任 Alembic 来管理数据库迁移。
 
