@@ -12,11 +12,12 @@ from app.crud.crud_question_bank import crud_question_bank
 
 from app.api import deps
 from app.models import user_management as user_models
+from app.schemas.response import UnifiedResponse
 
 router = APIRouter()
 
 
-@router.post("/", response_model=schemas.QuestionBank, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UnifiedResponse[schemas.QuestionBank], status_code=status.HTTP_201_CREATED)
 def create_question_bank_for_platform(
     *,
     db: Session = Depends(deps.get_db),
@@ -37,10 +38,10 @@ def create_question_bank_for_platform(
     question_bank = crud_question_bank.create_with_platform(
         db=db, obj_in=question_bank_in, platform_id=platform_id
     )
-    return question_bank
+    return {"data": question_bank}
 
 
-@router.get("/", response_model=List[schemas.QuestionBank])
+@router.get("/", response_model=UnifiedResponse[List[schemas.QuestionBank]])
 def read_question_banks_for_platform(
     *,
     db: Session = Depends(deps.get_db),
@@ -59,4 +60,5 @@ def read_question_banks_for_platform(
     
     # crud_question_bank 实例没有 get_multi_by_platform 方法，需要我们自己实现
     # 这里我们暂时使用 platform 的关系属性来获取
-    return platform.question_banks[skip : skip + limit]
+    question_banks = platform.question_banks[skip : skip + limit]
+    return {"data": question_banks}

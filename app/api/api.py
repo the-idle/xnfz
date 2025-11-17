@@ -32,5 +32,5 @@ api_router.include_router(
     tags=["questions"]
 )
 
-api_router.include_router(client.router, prefix="/client", tags=["client"])
 api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])
+api_router.include_router(client.router, prefix="/client", tags=["client"])

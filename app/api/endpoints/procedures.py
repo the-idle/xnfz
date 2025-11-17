@@ -8,10 +8,10 @@ from app.api import deps
 from app.models import user_management as user_models
 from app.crud.crud_procedure import crud_procedure
 from app.crud.crud_question_bank import crud_question_bank 
-
+from app.schemas.response import UnifiedResponse
 router = APIRouter()
 
-@router.post("/", response_model=schemas.Procedure, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UnifiedResponse[List[schemas.Platform]])
 def create_procedure_for_bank(
     question_bank_id: int,
     *,
@@ -27,6 +27,6 @@ def create_procedure_for_bank(
         raise HTTPException(status_code=404, detail="Parent question bank not found")
     
     procedure = crud_procedure.create_with_bank(db=db, obj_in=procedure_in, question_bank_id=question_bank_id)
-    return procedure
+    return {"data": procedure}
 
 # 您可以仿照此模式，轻松补全 get_multi, get, update, delete 接口

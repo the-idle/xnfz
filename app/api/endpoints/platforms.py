@@ -8,9 +8,11 @@ from app.api import deps
 from app.models import user_management as user_models
 
 from app.crud.crud_platform import crud_platform 
+from app.schemas.response import UnifiedResponse
 router = APIRouter()
 
-@router.post("/", response_model=schemas.Platform, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UnifiedResponse[schemas.Platform], status_code=status.HTTP_201_CREATED)
+
 def create_platform(
     *,
     db: Session = Depends(deps.get_db),
@@ -33,10 +35,10 @@ def create_platform(
 
     # 2. 如果不存在，则创建
     platform = crud_platform.create(db=db, obj_in=platform_in)
-    return platform
+    return {"data": platform}
 
 
-@router.get("/", response_model=List[schemas.Platform])
+@router.get("/", response_model=UnifiedResponse[List[schemas.Platform]])
 def read_platforms(
     db: Session = Depends(deps.get_db),
     skip: int = 0,
@@ -44,9 +46,9 @@ def read_platforms(
     current_user: user_models.User = Depends(deps.get_current_user)
 ):
     platforms = crud_platform.get_multi(db, skip=skip, limit=limit) # 修正
-    return platforms
+    return {"data": platforms}
 
-@router.get("/{platform_id}", response_model=schemas.Platform)
+@router.get("/{platform_id}", response_model=UnifiedResponse[schemas.Platform])
 def read_platform_by_id(
     platform_id: int,
     db: Session = Depends(deps.get_db),
@@ -55,9 +57,9 @@ def read_platform_by_id(
     platform = crud_platform.get(db=db, id=platform_id) # 修正 (注意 CRUDBase 中是 id)
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
-    return platform
+    return {"data": platform}
 
-@router.put("/{platform_id}", response_model=schemas.Platform)
+@router.put("/{platform_id}", response_model=UnifiedResponse[schemas.Platform])
 def update_platform(
     *,
     db: Session = Depends(deps.get_db),
@@ -69,9 +71,9 @@ def update_platform(
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
     platform = crud_platform.update(db=db, db_obj=platform, obj_in=platform_in) # 修正
-    return platform
+    return {"data": platform}
 
-@router.delete("/{platform_id}", response_model=schemas.Platform)
+@router.delete("/{platform_id}", response_model=UnifiedResponse[schemas.Platform])
 def delete_platform(
     *,
     db: Session = Depends(deps.get_db),
@@ -82,4 +84,4 @@ def delete_platform(
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
     platform = crud_platform.remove(db=db, id=platform_id) # 修正
-    return platform
+    return {"data": platform}

@@ -19,10 +19,23 @@ from app.crud.crud_blueprint import (
 from app.models.assessment_management import AssessmentResult
 from app.models.question_management import Question 
 from app.schemas.examinee import BlueprintProcedure
+from app.schemas.response import UnifiedResponse
+
 
 router = APIRouter()
 
-@router.post("/assessments/{assessment_id}/session", response_model=schemas.AssessmentBlueprintResponse)
+@router.get("/assessments/recent", response_model=UnifiedResponse[schemas.Assessment])
+def get_recent_assessment(db: Session = Depends(deps.get_db)):
+    """
+    获取当前正在进行中，且最近开始的一场考核。
+    供 Unity 客户端启动时自动查询。
+    """
+    assessment = crud_assessment.get_most_recent_active(db=db)
+    if not assessment:
+        raise HTTPException(status_code=404, detail="No active assessment found.")
+    return {"data": assessment}
+
+@router.post("/assessments/{assessment_id}/session", response_model=UnifiedResponse[schemas.AssessmentBlueprintResponse])
 def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depends(deps.get_db), start_request: schemas.AssessmentStartRequest):
     assessment = crud_assessment.get(db=db, id=assessment_id)
     if not assessment: raise HTTPException(status_code=404, detail="Assessment not found")
@@ -55,10 +68,10 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
     else:
         blueprint_to_return = blueprint
 
-    return {"assessment_result_id": session.id, "procedures": blueprint_to_return}
+    return {"data": {"assessment_result_id": session.id, "procedures": blueprint_to_return}}
 
 
-@router.post("/assessment-results/{result_id}/answer", response_model=schemas.SubmitAnswerResponse)
+@router.post("/assessment-results/{result_id}/answer", response_model=UnifiedResponse[schemas.SubmitAnswerResponse])
 def submit_answer(result_id: int, *, db: Session = Depends(deps.get_db), answer_in: schemas.SubmitAnswerRequest):
     result = crud_assessment_result.get(db=db, id=result_id)
     if not result or result.end_time: raise HTTPException(status_code=404, detail="Session not found or already finished")
@@ -77,9 +90,9 @@ def submit_answer(result_id: int, *, db: Session = Depends(deps.get_db), answer_
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         
-    return {"status": "success", "score_awarded": score_awarded, "is_correct": is_correct}
+    return {"data": {"status": "success", "score_awarded": score_awarded, "is_correct": is_correct}}
 
-@router.post("/assessment-results/{result_id}/finish")
+@router.post("/assessment-results/{result_id}/finish", response_model=UnifiedResponse)
 def finish_assessment(result_id: int, *, db: Session = Depends(deps.get_db), finish_request: schemas.FinishAssessmentRequest):
     result = crud_assessment_result.get(db=db, id=result_id)
     if not result: raise HTTPException(status_code=404, detail="Session not found")
@@ -91,4 +104,6 @@ def finish_assessment(result_id: int, *, db: Session = Depends(deps.get_db), fin
         
     result.end_time = datetime.utcnow()
     db.add(result); db.commit()
-    return {"status": "finished", "final_score": result.total_score}
+    return {"data": {"status": "finished", "final_score": result.total_score}}
+
+
