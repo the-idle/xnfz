@@ -11,7 +11,7 @@ from app.crud.crud_question_bank import crud_question_bank
 from app.schemas.response import UnifiedResponse
 router = APIRouter()
 
-@router.post("/", response_model=UnifiedResponse[List[schemas.Platform]])
+@router.post("/", response_model=UnifiedResponse[schemas.Platform])
 def create_procedure_for_bank(
     question_bank_id: int,
     *,

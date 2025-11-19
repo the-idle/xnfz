@@ -8,6 +8,9 @@ from typing import List
 cache = {} # 简单的内存缓存
 
 def build_assessment_blueprint(db: Session, *, question_bank_id: int) -> List[BlueprintProcedure]:
+    """
+    构建结构化的考核蓝图。这是此文件唯一的职责。
+    """
     bank = (
         db.query(QuestionBank)
         .options(
@@ -31,21 +34,3 @@ def build_assessment_blueprint(db: Session, *, question_bank_id: int) -> List[Bl
         procedures.append(BlueprintProcedure(id=proc.id, name=proc.name, questions=questions))
     return procedures
 
-def generate_and_cache_answer_map(db: Session, *, session_id: int, question_bank_id: int):
-    answer_map = {}
-    questions = db.query(Question).join(Procedure).filter(Procedure.question_bank_id == question_bank_id).options(joinedload(Question.options)).all()
-    
-    for q in questions:
-        for opt in q.options:
-            answer_map[str(opt.id)] = {
-                "question_id": q.id,
-                "procedure_id": q.procedure_id,
-                "is_correct": opt.is_correct,
-                "question_score": q.score,
-                "question_type": q.question_type.value
-            }
-    cache[f"answer_map:{session_id}"] = json.dumps(answer_map)
-
-def get_cached_answer_map(session_id: int) -> dict | None:
-    answer_map_json = cache.get(f"answer_map:{session_id}")
-    return json.loads(answer_map_json) if answer_map_json else None

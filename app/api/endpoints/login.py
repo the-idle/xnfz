@@ -15,7 +15,7 @@ from app.schemas.response import UnifiedResponse
 
 router = APIRouter()
 
-@router.post("/login/token", response_model=UnifiedResponse[schemas.Token])
+@router.post("/login/token", response_model=schemas.Token)
 def login_for_access_token(
     db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ):
@@ -33,7 +33,7 @@ def login_for_access_token(
     access_token = security.create_access_token(
         subject=user.username, expires_delta=access_token_expires
     )
-    return {"data": {"access_token": access_token, "token_type": "bearer"}}
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 

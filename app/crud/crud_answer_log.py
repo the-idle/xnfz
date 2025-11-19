@@ -1,72 +1,74 @@
-# app/crud/crud_answer_log.py (最终、最健-壮、最正确版本)
+# app/crud/crud_answer_log.py (最终修复版)
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Tuple
 
 from app.crud.base import CRUDBase
 from app.models.assessment_management import AnswerLog, AssessmentResult
+from app.models.question_management import Question
+from sqlalchemy.orm import joinedload
+
 from app.schemas.examinee import SubmitAnswerRequest
 from pydantic import BaseModel
 
 class CRUDAnswerLog(CRUDBase[AnswerLog, SubmitAnswerRequest, BaseModel]):
     def calculate_and_log_answer(
-        self, db: Session, *, result: AssessmentResult, answer_in: SubmitAnswerRequest, answer_map: dict
+        self, db: Session, *, result: AssessmentResult, answer_in: SubmitAnswerRequest
     ) -> Tuple[int, bool]:
-        """
-        核心计分逻辑（最终版，支持多选递减计分）
-        """
-        # ... (前置校验，提取 question_id, question_score, question_type 的逻辑不变) ...
-        if not answer_in.selected_option_ids:
-            raise ValueError("No options submitted.")
+        print("\n--- [DEBUG] ENTERING calculate_and_log_answer ---")
         
-        first_option_id_str = str(answer_in.selected_option_ids[0])
-        if first_option_id_str not in answer_map:
-            raise ValueError(f"Invalid option ID {first_option_id_str} submitted.")
+        question = (
+            db.query(Question).options(joinedload(Question.options))
+            .filter(Question.id == answer_in.question_id).first()
+        )
+        if not question: raise ValueError(f"Question with id {answer_in.question_id} not found.")
+        if question.procedure_id != answer_in.procedure_id: raise ValueError("Procedure ID mismatch.")
+            
+        correct_option_ids = {opt.id for opt in question.options if opt.is_correct}
         
-        question_info = answer_map[first_option_id_str]
-        question_id = question_info['question_id']
-        question_score = question_info['question_score']
-        question_type = question_info['question_type']
-
-        correct_option_ids = {
-            int(opt_id) for opt_id, info in answer_map.items() 
-            if info.get('question_id') == question_id and info.get('is_correct') is True
-        }
-
+        print(f"[DEBUG] Type of question.question_type: {type(question.question_type)}")
+        print(f"[DEBUG] Value of question.question_type: {question.question_type.value}")
+        
         score_awarded = 0
         is_correct = False
         submitted_option_ids = set(answer_in.selected_option_ids)
 
-        # --- 核心修正：计分逻辑 ---
-        if question_type == 'MULTIPLE_CHOICE':
-            # 1. 检查是否有错选：提交的答案中，是否有不属于正确答案的选项
+        # --- 终极核心修正：将比较字符串改为小写 ---
+        if question.question_type.value == 'single_choice': # <--- 修正为小写！
+            print(f"[DEBUG] SINGLE_CHOICE: Comparing {submitted_option_ids} == {correct_option_ids}")
+            if submitted_option_ids == correct_option_ids:
+                score_awarded = question.score
+                is_correct = True
+                
+        elif question.question_type.value == 'multiple_choice': # <--- 修正为小写！
+            print(f"[DEBUG] MULTIPLE_CHOICE: Checking subset and equality")
             if not submitted_option_ids.issubset(correct_option_ids):
-                score_awarded = 0  # 只要有错选，一分不得
+                score_awarded = 0
                 is_correct = False
-            # 2. 如果没有错选，再判断是否全对或少选
             else:
                 if submitted_option_ids == correct_option_ids:
-                    score_awarded = question_score # 全对，得满分
+                    score_awarded = question.score
                     is_correct = True
                 else:
-                    # 少选，按比例递减计分 (例如：得一半分数)
-                    # 您可以自定义更复杂的计分规则
-                    score_awarded = round(question_score / 2) 
-                    is_correct = False # 即使得分，也不算完全正确
-        
-        elif question_type == 'SINGLE_CHOICE':
-            if submitted_option_ids == correct_option_ids:
-                score_awarded = question_score
-                is_correct = True
-            # 单选题答错，score_awarded 保持为 0, is_correct 保持为 False
-            
-        # --- 记录日志和更新总分的逻辑保持不变 ---
-        db_log = AnswerLog(...)
+                    score_awarded = round(question.score / 2)
+                    is_correct = False
+
+        print(f"[DEBUG] Final Result: is_correct={is_correct}, score_awarded={score_awarded}")
+
+        db_log = AnswerLog(
+            result_id=result.id,
+            question_id=answer_in.question_id,
+            selected_option_ids=answer_in.selected_option_ids,
+            score_awarded=score_awarded,
+            answered_at=datetime.utcnow()
+        )
         db.add(db_log)
         result.total_score = (result.total_score or 0) + score_awarded
         db.add(result)
         db.commit()
         db.refresh(result)
+        
+        print("--- [DEBUG] EXITING calculate_and_log_answer ---\n")
         
         return score_awarded, is_correct
 

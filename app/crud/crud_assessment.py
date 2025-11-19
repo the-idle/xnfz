@@ -2,6 +2,8 @@
 from app.crud.base import CRUDBase
 from app.models.assessment_management import Assessment
 from app.schemas.assessment import AssessmentCreate, AssessmentUpdate
+from app.models.question_management import QuestionBank
+
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session 
 
