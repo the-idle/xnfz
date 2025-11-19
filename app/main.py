@@ -6,6 +6,7 @@ from app.api.api import api_router
 from app.core.config import settings
 from fastapi.exceptions import HTTPException
 from app.core.exceptions import http_exception_handler, BusinessException, business_exception_handler
+from fastapi.staticfiles import StaticFiles
 
 
 # 2. (重要) 导入所有数据库模型，以确保 SQLAlchemy 在启动时能识别它们
@@ -20,6 +21,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")    
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(BusinessException, business_exception_handler)
 # 4. (重要) 移除 startup 事件中的 create_all。

@@ -9,6 +9,7 @@ import enum
 class QuestionType(enum.Enum):
     SINGLE_CHOICE = "single_choice"
     MULTIPLE_CHOICE = "multiple_choice"
+    DEDUCTION_SINGLE_CHOICE = "deduction_single_choice" # <--- 新增扣分单选题
 
 # Platform 模型保持不变
 class Platform(Base):

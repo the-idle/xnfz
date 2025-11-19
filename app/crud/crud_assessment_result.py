@@ -5,6 +5,9 @@ from app.models.assessment_management import AssessmentResult, AnswerLog, Assess
 from app.models.question_management import Question, QuestionBank, Procedure
 from app.schemas.examinee import BaseModel # 仅用于类型提示
 from typing import List
+from sqlalchemy.orm import selectinload
+
+
 
 class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
     def get_active_session(self, db: Session, *, assessment_id: int, examinee_id: int) -> AssessmentResult | None:
@@ -43,5 +46,25 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
             .all()
         )
         return questions
+
+    def get_multi_by_assessment(
+        self, db: Session, *, assessment_id: int, skip: int = 0, limit: int = 100
+    ) -> List[AssessmentResult]:
+        """
+        获取某场考核下的所有成绩记录，并预加载考生和答题日志
+        """
+        return (
+            db.query(AssessmentResult)
+            .filter(AssessmentResult.assessment_id == assessment_id)
+            .options(
+                selectinload(AssessmentResult.examinee),
+                selectinload(AssessmentResult.answer_logs)
+            )
+            .order_by(AssessmentResult.id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
 
 crud_assessment_result = CRUDAssessmentResult(AssessmentResult)

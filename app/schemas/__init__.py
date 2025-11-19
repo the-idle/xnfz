@@ -68,4 +68,9 @@ from .examinee import (
     FinishAssessmentRequest
 )
 
+from .result import (
+    AssessmentResultDetail
+)
+
+
 

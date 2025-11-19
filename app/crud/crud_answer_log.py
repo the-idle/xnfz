@@ -34,7 +34,16 @@ class CRUDAnswerLog(CRUDBase[AnswerLog, SubmitAnswerRequest, BaseModel]):
         submitted_option_ids = set(answer_in.selected_option_ids)
 
         # --- 终极核心修正：将比较字符串改为小写 ---
-        if question.question_type.value == 'single_choice': # <--- 修正为小写！
+        # --- 升级计分逻辑 ---
+        if question.question_type.value == 'deduction_single_choice':
+            if submitted_option_ids == correct_option_ids:
+                score_awarded = 0 # 答对不得分
+                is_correct = True
+            else:
+                score_awarded = -question.score # 答错，扣除该题的全部分值
+                is_correct = False
+
+        elif question.question_type.value == 'single_choice': # <--- 修正为小写！
             print(f"[DEBUG] SINGLE_CHOICE: Comparing {submitted_option_ids} == {correct_option_ids}")
             if submitted_option_ids == correct_option_ids:
                 score_awarded = question.score

@@ -1,112 +1,237 @@
-测试
-### **最终联调测试：完整流程验证**
+# Unity Assessment API 前端快速上手接口文档
 
-请打开您的 Swagger UI (`http://127.0.0.1:8000/docs`)，并严格按照以下步骤操作。
+面向前端/Unity 客户端的接口说明，包含端点、授权、请求体与响应示例，以及单选、多选、扣分单选的操作与评分规则，帮助你快速联调。
 
-#### **第一阶段：【后台管理员】准备考核内容**
+- 基础地址（Base URL）：`http://127.0.0.1:8000/api/v1`
+- 统一响应结构：`{ code, msg, data }`
+- 授权方式：Bearer Token（Swagger 右上角 Authorize）
 
-**1. 登录 (获取钥匙)**
-   *   进入 `login` 分组。
-   *   点击右上角的 **"Authorize"** 按钮。
-   *   在弹窗中输入 `username: admin`, `password: password`，然后点击 "Authorize" 获取全局授权。
+## 一、授权登录
 
-**2. 创建平台 (Platform)**
-   *   进入 `platforms` 分组。
-   *   使用 `POST /platforms/` 创建一个平台。
-   *   请求体：`{ "name": "综合技能考核平台 V2" }`
-   *   **记下**返回的 `id`，假设是 **`1`**。
+- 端点：`POST /login/token`
+- 描述：使用用户名/密码换取访问令牌（access_token）
+- 请求（表单，OAuth2PasswordRequestForm）：
+  - `username`: `admin`
+  - `password`: `password`
+- 响应示例：
+```json
+{
+  "access_token": "xxx.yyy.zzz",
+  "token_type": "bearer"
+}
+```
+- 用法：在后续所有需要管理员权限的操作中，在 Header 中加入：
+  - `Authorization: Bearer {access_token}`
 
-**3. 创建题库 (Question Bank)**
-   *   进入 `question-banks` 分组。
-   *   使用 `POST /question-banks/` 创建一个题库。
-   *   请求体：`{ "name": "车间安全操作题库", "platform_id": 1 }` (这里的 platform_id 就是上一步的ID)
-   *   **记下**返回的 `id`，假设是 **`1`**。
+## 二、数据准备（后台管理员）
 
-**4. 创建工序/点位 (Procedure)**
-   *   进入 `procedures` 分组。
-   *   使用 `POST /question-banks/{question_bank_id}/procedures/`。
-   *   路径参数 `question_bank_id`: **`1`**。
-   *   请求体：`{ "name": "车床安全检查点" }`
-   *   **记下**返回的 `id`，假设是 **`1`**。
+按此顺序创建资源。所有路径均带 `/api/v1` 前缀。
 
-**5. 创建题目 (Question)**
-   *   进入 `questions` 分组。
-   *   使用 `POST /procedures/{procedure_id}/questions/`。
-   *   路径参数 `procedure_id`: **`1`**。
-   *   **请求体 (这是一个包含选项的复杂JSON):**
-     ```json
-     {
-       "prompt": "在操作车床前，必须佩戴的个人防护用品是什么？",
-       "question_type": "SINGLE_CHOICE",
-       "scene_identifier": "lathe_safety_check_01",
-       "score": 10,
-       "image_url": null,
-       "options": [
-         {
-           "option_text": "手套",
-           "is_correct": false
-         },
-         {
-           "option_text": "防护眼镜",
-           "is_correct": true
-         },
-         {
-           "option_text": "安全帽",
-           "is_correct": false
-         }
-       ]
-     }
-     ```
-   *   执行创建。
+### 1) 创建平台（Platform）
+- 端点：`POST /platforms/`（需要管理员权限）
+- 请求体：
+```json
+{ "name": "综合技能考核平台 V2" }
+```
+- 响应字段（data）：
+  - `id`: 平台 ID（记录下来，示例记作 `platform_id = 1`）
 
-**6. 创建考核场次 (Assessment)**
-   *   进入 `assessments` 分组。
-   *   使用 `POST /assessments/`。
-   *   请求体：
-     ```json
-     {
-       "title": "2025年度车间安全专项考核",
-       "start_time": "2025-01-01T00:00:00",
-       "end_time": "2025-12-31T23:59:59",
-       "question_bank_id": 1
-     }
-     ```
-   *   **记下**返回的 `id`，假设是 **`1`**。
+### 2) 创建题库（Question Bank）
+- 端点：`POST /platforms/{platform_id}/question-banks/`（需要管理员权限）
+- 路径参数：`platform_id = 1`
+- 请求体：
+```json
+{ "name": "车间安全操作题库" }
+```
+- 响应字段（data）：
+  - `id`: 题库 ID（记录下来，示例记作 `question_bank_id = 1`）
 
-至此，我们的后台数据准备工作全部完成！我们有了一个完整的、可供考核的数据链条。
+### 3) 创建工序/点位（Procedure）
+- 端点：`POST /question-banks/{question_bank_id}/procedures/`（需要管理员权限）
+- 路径参数：`question_bank_id = 1`
+- 请求体：
+```json
+{ "name": "车床安全检查点" }
+```
+- 响应字段（data）：
+  - `id`: 工序/点位 ID（记录下来，示例记作 `procedure_id = 1`）
 
----
+### 4) 创建题目（Question，含选项，支持图片）
+- 端点：`POST /procedures/{procedure_id}/questions/`（需要管理员权限）
+- 路径参数：`procedure_id = 1`
+- Content-Type：`multipart/form-data`
+- 字段说明：
+  - `question_data`: 字符串类型的 JSON（必须），结构应符合下方示例
+  - `image_file`: 图片文件（可选，`image/jpeg|png|gif`）
+- `question_data` 示例（字符串内容为下方 JSON）：
+```json
+{
+  "prompt": "在操作车床前，必须佩戴的个人防护用品是什么？",
+  "question_type": "SINGLE_CHOICE",
+  "scene_identifier": "lathe_safety_check_01",
+  "score": 10,
+  "image_url": null,
+  "options": [
+    { "option_text": "手套", "is_correct": false },
+    { "option_text": "防护眼镜", "is_correct": true },
+    { "option_text": "安全帽", "is_correct": false }
+  ]
+}
+```
+- 注意：
+  - `question_type` 可选值：
+    - `SINGLE_CHOICE`（单选题）
+    - `MULTIPLE_CHOICE`（多选题）
+    - `DEDUCTION_SINGLE_CHOICE`（扣分单选题）
+  - 服务端会把 `image_file` 存储到 `static/images`，并将相对路径写入题目的 `image_url`
+  - 如果 `scene_identifier` 重复，服务端会拒绝创建（避免 Unity 场景标识冲突）
 
-#### **第二阶段：【Unity 客户端】进行考核**
+### 5) 创建考核场次（Assessment）
+- 端点：`POST /assessments/`（需要管理员权限）
+- 请求体：
+```json
+{
+  "title": "2025年度车间安全专项考核",
+  "start_time": "2025-01-01T00:00:00",
+  "end_time": "2025-12-31T23:59:59",
+  "question_bank_id": 1
+}
+```
+- 响应字段（data）：
+  - `id`: 考核场次 ID（记录下来，示例记作 `assessment_id = 1`）
+- 说明：服务端会校验同平台下的时间冲突，若冲突返回 409
 
-现在，我们切换到 `client` 分组，模拟考生的操作。
+## 三、客户端联调（Unity / 前端）
 
-**7. 考生开始考核**
-   *   进入 `client` 分组。
-   *   使用 `POST /client/assessments/{assessment_id}/session`。
-   *   路径参数 `assessment_id`: **`1`**。
-   *   请求体：`{ "examinee_identifier": "UNITY_CLIENT_001" }`
-   *   **验证与记录**:
-      *   **预期结果**: 您应该会收到一个 `200 OK` 的响应。
-      *   响应体中的 `procedures` 列表应该不再是空的，它会包含一个名为“车床安全检查点”的工序，该工序下包含了我们刚刚创建的那道题目，并且每个选项都有一个临时的 `answer_id`。
-      *   **记下**返回的 `assessment_result_id` (假设是 **`1`**) 和 “防护眼镜” 那个选项的 `answer_id` (假设是 **`2`**)。
+### 1) 获取最近可用的考核
+- 端点：`GET /client/assessments/recent`
+- 描述：返回最近且正在进行中的一场考核
+- 响应（data）：`Assessment` 对象（包含 `id`, `title`, `start_time`, `end_time`, `question_bank_id`）
 
-**8. 考生提交答案**
-   *   **【重要】** 这一步我们的后端逻辑还没有完全实现（之前的代码是简化版），但我们可以测试接口是否能被调用。
-   *   找到 `client` 分组下的 `POST /assessment-results/{result_id}/answer` 接口。
-   *   路径参数 `result_id`: **`1`**。
-   *   请求体：`{ "selected_answer_ids": [2] }` (提交“防护眼镜”的答案ID)
-   *   **验证**:
-      *   **预期结果**: 您应该会收到一个 `200 OK` 的响应，`score_awarded` 可能是 10，`is_correct` 是 `true`。
+### 2) 开始/继续考核会话
+- 端点：`POST /client/assessments/{assessment_id}/session`
+- 路径参数：`assessment_id = 1`
+- 请求体：
+```json
+{ "examinee_identifier": "UNITY_CLIENT_001" }
+```
+- 响应（data）：
+```json
+{
+  "assessment_result_id": 1,
+  "procedures": [
+    {
+      "id": 1,
+      "name": "车床安全检查点",
+      "questions": [
+        {
+          "id": 1,
+          "scene_identifier": "lathe_safety_check_01",
+          "prompt": "在操作车床前，必须佩戴的个人防护用品是什么？",
+          "question_type": "single_choice",
+          "score": 10,
+          "image_url": "/static/images/xxx.jpg",
+          "options": [
+            { "id": 10, "option_text": "手套" },
+            { "id": 11, "option_text": "防护眼镜" },
+            { "id": 12, "option_text": "安全帽" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+- 说明：
+  - 返回的 `options.id` 是“真实选项 ID”，用于答案提交（不存在“临时 answer_id”）
+  - `question_type` 值为小写枚举：`single_choice` / `multiple_choice` / `deduction_single_choice`
 
-**9. （可选）断点续考验证**
-   *   再次执行第 7 步的 `POST /client/assessments/1/session` 请求。
-   *   **预期结果**: 理想情况下（在我们实现了完整的断点续考逻辑后），返回的 `procedures` 列表中应该不再包含您刚刚回答过的那道题。在当前的简化实现下，它可能仍然会返回所有题目。
+### 3) 提交答案（关键）
+- 端点：`POST /client/assessment-results/{result_id}/answer`
+- 路径参数：`result_id = 1`（来自会话响应的 `assessment_result_id`）
+- 请求体（统一结构）：
+```json
+{
+  "examinee_identifier": "UNITY_CLIENT_001",
+  "procedure_id": 1,
+  "question_id": 1,
+  "selected_option_ids": [11]
+}
+```
+- 字段说明：
+  - `examinee_identifier`：必须与会话创建时一致（服务端会校验）
+  - `procedure_id`：该题所属工序/点位的 ID
+  - `question_id`：题目 ID
+  - `selected_option_ids`：
+    - 单选题：数组中应只有一个选项 ID（例如 `[11]`）
+    - 多选题：数组中包含所有选择的选项 ID（例如 `[11, 12]`）
+- 响应（data）：
+```json
+{
+  "status": "ok",
+  "score_awarded": 10,
+  "is_correct": true
+}
+```
 
-**10. 结束考核**
-    *   找到 `client` 分组下的 `POST /assessment-results/{result_id}/finish` 接口。
-    *   路径参数 `result_id`: **`1`**。
-    *   执行请求。
-    *   **预期结果**: 收到 `200 OK`，状态为 `finished`，`final_score` 为您在考核中获得的总分。
+#### 评分规则（请严格遵循）
+- 单选题 `single_choice`：
+  - 选择集合与正确集合完全相同（通常是单个 ID），`is_correct = true`，`score_awarded = 题目满分`
+  - 否则 `is_correct = false`，`score_awarded = 0`
 
----
+- 多选题 `multiple_choice`：
+  - 若提交的选项包含任何错误选项（不属于正确集合），`is_correct = false`，`score_awarded = 0`
+  - 若提交选项为“正确集合的子集但不完全相等”，`is_correct = false`，`score_awarded = round(题目满分 / 2)`（半分）
+  - 若提交选项与正确集合完全相同，`is_correct = true`，`score_awarded = 题目满分`
+
+- 扣分单选题 `deduction_single_choice`：
+  - 答对不得分：`is_correct = true`，`score_awarded = 0`
+  - 答错扣满分：`is_correct = false`，`score_awarded = -题目满分`（总分会被扣减）
+
+- 其他重要约束：
+  - 同一会话中同一题目只能提交一次；否则服务端返回 `400`（重复提交）
+  - 提交时间必须在考核时间范围内；否则返回 `403`
+  - 所有分数累计到 `result.total_score`（可能为负数，如果有扣分题）
+
+### 4) 结束考核
+- 端点：`POST /client/assessment-results/{result_id}/finish`
+- 路径参数：`result_id = 1`
+- 请求体：
+```json
+{ "examinee_identifier": "UNITY_CLIENT_001" }
+```
+- 响应（data）：
+```json
+{ "status": "finished", "final_score": 10 }
+```
+- 说明：结束后会话 `end_time` 写入，不可再提交答案
+
+## 四、统一响应结构
+
+所有业务端点统一返回：
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": { ... }
+}
+```
+- 成功：HTTP 200，`code=200`
+- 业务异常：HTTP 200，但 `code != 200`（由服务端业务异常处理器转换）
+- 标准 HTTP 异常：如 400/403/404/409，`code` 与 HTTP 状态码一致
+
+## 五、常见错误与排查
+
+- 401 未授权：忘记 Authorize 或 Token 过期
+- 403 时间限制：当前不在考核时间范围
+- 404 资源不存在：检查 ID 是否正确
+- 400 重复提交：同一题不可再次提交
+- 415/400 创建题目：`multipart/form-data` 与 `question_data` JSON 字符串格式不正确
+
+## 六、快速联调流程（复盘）
+
+1. Authorize 登录（`admin/password`）
+2. 创建平台 → 题库 → 工序/点位 → 题目（可带图片） → 考核场次
+3. 客户端开始会话（拿到 `assessment_result_id`）
+4. 按题提交答案（单选/多选/扣分单选遵循评分规则）
+5. 结束考核（得到 `final_score`）

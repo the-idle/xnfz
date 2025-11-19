@@ -3,8 +3,7 @@ from fastapi import APIRouter
 
 # 1. 导入所有端点模块
 from app.api.endpoints import (
-    login, platforms, question_banks, procedures, questions , client, assessments
-
+    login, platforms, question_banks, procedures, questions , client, assessments, utils, results
 )
 
 api_router = APIRouter()
@@ -31,6 +30,9 @@ api_router.include_router(
     prefix="/procedures/{procedure_id}/questions",
     tags=["questions"]
 )
+api_router.include_router(utils.router, prefix="/utils", tags=["utils"])
 
 api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])
 api_router.include_router(client.router, prefix="/client", tags=["client"])
+api_router.include_router(results.router, prefix="/admin", tags=["results"])
+

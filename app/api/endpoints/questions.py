@@ -7,33 +7,74 @@ from app.api import deps
 from app.models import user_management as user_models
 from app.crud.crud_question import crud_question
 from app.crud.crud_procedure import crud_procedure
+from app.schemas.response import UnifiedResponse
+from fastapi import Form, File, UploadFile
+from pathlib import Path
+import json
+from datetime import datetime
+import shutil
+from typing import Optional
+
+
 
 router = APIRouter()
 
-@router.post("/", response_model=schemas.Question, status_code=status.HTTP_201_CREATED)
-def create_question_for_procedure( # <--- 函数名可以更通用
-    procedure_id: int, # <--- 修改
+UPLOAD_DIR = Path("static/images")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+@router.post("/", response_model=UnifiedResponse[schemas.Question], status_code=status.HTTP_201_CREATED)
+def create_question_with_optional_image( # <--- 函数名可以更通用
+    procedure_id: int,
     *,
     db: Session = Depends(deps.get_db),
-    question_in: schemas.QuestionCreate,
+    # --- 核心修改：使用 Form(...) 来接收 JSON 字符串 ---
+    question_data: str = Form(...),
+    # --- 核心修改：使用 File(...) 来接收可选的图片文件 ---
+    image_file: Optional[UploadFile] = File(None),
     current_user: user_models.User = Depends(deps.get_current_user)
 ):
     """
-    为指定工序/点位创建一个新的题目（包含选项）
+    为指定工序/点位创建一个新的题目（包含选项和可选的图片）。
+    
+    - **question_data**: 一个 JSON 字符串，其结构必须符合 QuestionCreate schema。
+    - **image_file**: (可选) 一个图片文件。
     """
-    # 检查父级工序是否存在
-    procedure = crud_procedure.get(db=db, id=procedure_id) # <--- 修改
+    # 1. 解析 JSON 字符串为 Pydantic 模型
+    try:
+        question_in = schemas.QuestionCreate.model_validate_json(question_data)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format for question_data.")
+        
+    # 2. 检查父级工序和 scene_identifier 是否重复 (逻辑不变)
+    procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
         raise HTTPException(status_code=404, detail="Parent procedure not found")
 
     existing_question = crud_question.get_by_scene_identifier(db=db, scene_identifier=question_in.scene_identifier)
     if existing_question:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Question with scene_identifier '{question_in.scene_identifier}' already exists.",
-        )
+        raise HTTPException(status_code=400, detail=f"Question with scene_identifier '{question_in.scene_identifier}' already exists.")
+
+    # 3. 处理图片上传 (如果提供了文件)
+    image_url_to_save = None
+    if image_file:
+        if image_file.content_type not in ["image/jpeg", "image/png", "image/gif"]:
+            raise HTTPException(status_code=400, detail="Invalid image type.")
         
+        try:
+            file_path = UPLOAD_DIR / f"{datetime.utcnow().timestamp()}_{image_file.filename}"
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(image_file.file, buffer)
+            
+            # 保存相对路径到数据库
+            image_url_to_save = f"/{file_path}"
+        finally:
+            image_file.file.close()
+
+    # 4. 调用 CRUD 函数创建题目
+    # 注意：我们将 image_url 覆盖到 Pydantic 模型中
+    question_in.image_url = image_url_to_save
+    
     question = crud_question.create_with_options(
-        db=db, obj_in=question_in, procedure_id=procedure_id # <--- 修改
+        db=db, obj_in=question_in, procedure_id=procedure_id
     )
-    return question
+    return {"data": question}
