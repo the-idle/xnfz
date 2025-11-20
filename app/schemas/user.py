@@ -1,13 +1,19 @@
 # app/schemas/user.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 
 # --- User Schemas ---
 class UserBase(BaseModel):
     username: str
 
 class UserCreate(UserBase):
-    password: str
+    password: str=Field(..., min_length=6)
+    is_superuser: bool = False
 
+class UserUpdate(BaseModel):
+    password: Optional[str] = Field(None, min_length=6)
+    is_superuser: Optional[bool] = None
+    
 class User(UserBase):
     id: int
     is_superuser: bool

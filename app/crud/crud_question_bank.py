@@ -26,5 +26,11 @@ class CRUDQuestionBank(CRUDBase[QuestionBank, QuestionBankCreate, QuestionBankUp
         """
         return db.query(self.model).filter(self.model.platform_id == platform_id).offset(skip).limit(limit).all()
 
+    def get_by_name_and_platform(self, db: Session, *, name: str, platform_id: int) -> QuestionBank | None:
+        """
+        在指定平台下，通过名称查找题库。
+        """
+        return db.query(self.model).filter(self.model.name == name, self.model.platform_id == platform_id).first()
+
 # 创建一个 CRUDQuestionBank 类的实例，供 API 端点使用
 crud_question_bank = CRUDQuestionBank(QuestionBank)

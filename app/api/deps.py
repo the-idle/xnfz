@@ -9,9 +9,8 @@ from app.core import security
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user_management import User
-from app.crud import crud_user
 from app.schemas import user as user_schema
-
+from app.crud.crud_user import crud_user
 # 这一行是关键：它创建了一个 OAuth2 "流"，并指定了获取 token 的 URL
 # FastAPI 会用它来在 Swagger UI 中自动添加 "Authorize" 按钮
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -39,10 +38,16 @@ def get_current_user(
         )
     
     # 从 token 中获取用户名，并从数据库中查找用户
-    user = crud_user.get_user_by_username(db, username=token_data.sub) # 'sub' 是 JWT 的标准主题字段
+    user = crud_user.get_by_username(db, username=token_data.sub) # 'sub' 是 JWT 的标准主题字段
     
     if not user:
         # 如果在数据库中找不到该用户，抛出异常
         raise HTTPException(status_code=404, detail="User not found")
         
     return user
+
+# app/api/deps.py
+def get_current_active_superuser(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+    return current_user

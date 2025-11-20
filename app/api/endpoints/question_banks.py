@@ -28,11 +28,15 @@ def create_question_bank_for_platform(
     """
     为指定的平台创建一个新的题库 (需要管理员权限)
     """
-    # --- 修正函数调用 ---
-    # 1. 检查平台是否存在
-    platform = crud_platform.get(db=db, id=platform_id)
-    if not platform:
-        raise HTTPException(status_code=404, detail="Parent platform not found")
+    # --- 新增：唯一性校验 ---
+    existing_bank = crud_question_bank.get_by_name_and_platform(
+        db=db, name=question_bank_in.name, platform_id=platform_id
+    )
+    if existing_bank:
+        raise HTTPException(
+            status_code=409, # 409 Conflict
+            detail=f"Question bank with name '{question_bank_in.name}' already exists in this platform."
+        )
 
     # 2. 创建题库并与平台关联
     question_bank = crud_question_bank.create_with_platform(

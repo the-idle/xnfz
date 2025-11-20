@@ -12,6 +12,7 @@ from app import crud
 from app.core import security
 from app.db.session import get_db
 from app.schemas.response import UnifiedResponse
+from app.crud.crud_user import crud_user
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ def login_for_access_token(
     """
     OAuth2-compatible token login, get an access token for future requests
     """
-    user = crud.crud_user.get_user_by_username(db, username=form_data.username)
+    user = crud_user.get_by_username(db, username=form_data.username)
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=400,

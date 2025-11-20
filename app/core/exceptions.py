@@ -8,7 +8,7 @@ async def http_exception_handler(request: Request, exc: Exception):
     全局 HTTP 异常处理器
     """
     return JSONResponse(
-        status_code=exc.status_code,
+        status_code=status.HTTP_200_OK,
         content={
             "code": exc.status_code, # 使用 HTTP 状态码作为业务码
             "msg": exc.detail,

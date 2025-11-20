@@ -5,7 +5,8 @@ from .user import (
     User,
     UserCreate,
     Token,
-    TokenData
+    TokenData,
+    UserUpdate,
 )
 
 # 从 assessment.py 文件中导入所有与考核、题目、结果等相关的 Schemas
