@@ -74,12 +74,13 @@ class BlueprintQuestion(BaseModel):
     下发给客户端的题目结构
     """
     id: int # <--- 核心修改：直接下发 question.id
-    scene_identifier: str
+    scene_identifier: Optional[str] = None
     prompt: str
     question_type: str
     score: int
     image_url: Optional[str] = None
     options: List[BlueprintOption]
+    selected_option_ids: Optional[List[int]] = None
 
 class BlueprintProcedure(BaseModel):
     """

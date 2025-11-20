@@ -51,22 +51,42 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
     examinee = crud_examinee.get_or_create_by_identifier(db=db, identifier=start_request.examinee_identifier)
     session = crud_assessment_result.get_active_session(db=db, assessment_id=assessment_id, examinee_id=examinee.id)
 
-    if not session:
-        session = AssessmentResult(assessment_id=assessment_id, examinee_id=examinee.id, start_time=datetime.utcnow())
-        db.add(session); db.commit(); db.refresh(session)
-        # generate_and_cache_answer_map(db=db, session_id=session.id, question_bank_id=assessment.question_bank_id)
-
-    blueprint = build_assessment_blueprint(db=db, question_bank_id=assessment.question_bank_id)
-    answered_ids = crud_assessment_result.get_answered_question_ids(db=db, result_id=session.id)
+    # 1. 构建完整的考核蓝图
+    full_blueprint = build_assessment_blueprint(db=db, question_bank_id=assessment.question_bank_id)
     
-    blueprint_to_return = blueprint
-    if answered_ids:
-        filtered_procedures = []
-        for proc in blueprint:
-            remaining_questions = [q for q in proc.questions if q.id not in answered_ids]
-            if remaining_questions:
-                filtered_procedures.append(BlueprintProcedure(id=proc.id, name=proc.name, questions=remaining_questions))
-        blueprint_to_return = filtered_procedures
+    # 2. 获取已回答题目的详细信息映射
+    answered_logs_map = crud_assessment_result.get_answered_logs_map(db=db, result_id=session.id)
+    answered_question_ids = set(answered_logs_map.keys())
+
+    # 3. 核心逻辑：过滤已完成的工序，并为题目注入已选答案
+    blueprint_to_return = []
+    for proc in full_blueprint:
+        # a. 检查该工序下的所有题目ID
+        question_ids_in_proc = {q.id for q in proc.questions}
+        
+        # b. 如果该工序下的所有题目都已回答，则跳过此工序
+        if question_ids_in_proc.issubset(answered_question_ids):
+            continue
+
+        # c. 如果工序未完成，则处理其下的题目
+        questions_with_answers = []
+        for question in proc.questions:
+            # 使用 Pydantic 模型的 model_dump 将其转换为字典以便修改
+            question_data = question.model_dump()
+            
+            # 检查当前题目是否已回答，如果是，则注入已选答案
+            if question.id in answered_logs_map:
+                question_data['selected_option_ids'] = answered_logs_map[question.id]
+            
+            questions_with_answers.append(question_data)
+        
+        # d. 创建一个新的工序对象，包含处理过的题目列表
+        filtered_proc = BlueprintProcedure(
+            id=proc.id,
+            name=proc.name,
+            questions=questions_with_answers
+        )
+        blueprint_to_return.append(filtered_proc)
 
     return {"data": {"assessment_result_id": session.id, "procedures": blueprint_to_return}}
 

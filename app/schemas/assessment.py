@@ -2,6 +2,9 @@
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
+from typing import Optional
+
+
 
 # --- Option Schemas ---
 class OptionBase(BaseModel):
@@ -21,7 +24,7 @@ class Option(OptionBase):
 class QuestionBase(BaseModel):
     prompt: str
     question_type: str # 这里暂时用 str，后面可以映射为 Enum
-    scene_identifier: str
+    scene_identifier: Optional[str] = None
     score: int
     image_url: str | None = None
 
@@ -39,7 +42,7 @@ class Question(QuestionBase):
 class QuestionForExaminee(BaseModel):
     """专门为考生（Unity客户端）设计的题目数据结构，隐藏了 is_correct 答案信息"""
     question_id: int
-    scene_identifier: str
+    scene_identifier:Optional[str] = None
     prompt: str
     question_type: str
     score: int

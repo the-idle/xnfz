@@ -5,6 +5,7 @@ from app.models.assessment_management import AssessmentResult, AnswerLog, Assess
 from app.models.question_management import Question, QuestionBank, Procedure
 from app.schemas.examinee import BaseModel # 仅用于类型提示
 from typing import List
+from typing import Dict
 from sqlalchemy.orm import selectinload
 
 
@@ -65,6 +66,26 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
             .limit(limit)
             .all()
         )
+
+    def get_answered_logs_map(self, db: Session, *, result_id: int) -> Dict[int, List[int]]:
+        """
+        获取某次考核会话中所有已回答题目的日志，并返回一个映射：
+        { question_id: [selected_option_ids] }
+        """
+        logs = db.query(AnswerLog).filter(AnswerLog.result_id == result_id).all()
+        
+        answered_map = {}
+        for log in logs:
+            # 确保 selected_option_ids 是一个列表
+            # SQLAlchemy 的 JSON 类型会自动反序列化
+            if isinstance(log.selected_option_ids, list):
+                answered_map[log.question_id] = log.selected_option_ids
+            else: # 作为后备方案，如果存的是字符串，则手动解析
+                try:
+                    answered_map[log.question_id] = json.loads(log.selected_option_ids)
+                except (json.JSONDecodeError, TypeError):
+                    answered_map[log.question_id] = []
+        return answered_map
 
 
 crud_assessment_result = CRUDAssessmentResult(AssessmentResult)

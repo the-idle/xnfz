@@ -8,7 +8,8 @@ class AnswerLogDetail(BaseModel):
     question_id: int
     score_awarded: int
     answered_at: datetime
-
+    selected_option_ids: List[int]
+    
     class Config:
         from_attributes = True
 
