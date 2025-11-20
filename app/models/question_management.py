@@ -55,7 +55,7 @@ class Question(Base):
     prompt = Column(Text, nullable=False, comment="题干/交互界面的提示文字")
     image_url = Column(String(512), nullable=True, comment="题目关联的图片URL或路径")
     question_type = Column(SQLAlchemyEnum(QuestionType), nullable=False)
-    scene_identifier = Column(String(100), nullable=False, unique=True, comment="场景中的唯一标识，如'gongxu_1_wuliao'")
+    scene_identifier = Column(String(100), nullable=True, unique=False) 
     score = Column(Integer, nullable=False, default=5, comment="该题目的总分值")
     
     # --- 修正外键和关系 ---

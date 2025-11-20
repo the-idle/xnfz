@@ -7,7 +7,7 @@ from app.core.config import settings
 from fastapi.exceptions import HTTPException
 from app.core.exceptions import http_exception_handler, BusinessException, business_exception_handler
 from fastapi.staticfiles import StaticFiles
-
+from fastapi.middleware.cors import CORSMiddleware
 
 # 2. (重要) 导入所有数据库模型，以确保 SQLAlchemy 在启动时能识别它们
 #    这是解决运行时 "failed to locate a name" 错误的关键
@@ -19,6 +19,19 @@ from app.models import assessment_management
 app = FastAPI(
     title=settings.APP_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
+
+origins = [
+    "http://localhost:5173", # 前端地址
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # 开发阶段为了方便，可以直接设为 ["*"] 允许所有
+    allow_credentials=True,
+    allow_methods=["*"], # 允许所有方法 (GET, POST, PUT...)
+    allow_headers=["*"], # 允许所有 Header
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")    

@@ -2,6 +2,8 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+
+
 # --- Option Schemas ---
 class OptionBase(BaseModel):
     option_text: str
@@ -20,7 +22,7 @@ class Option(OptionBase):
 class QuestionBase(BaseModel):
     prompt: str
     question_type: str = Field(..., description="e.g., 'SINGLE_CHOICE' or 'MULTIPLE_CHOICE'")
-    scene_identifier: str
+    scene_identifier: Optional[str] = None
     score: int
     image_url: Optional[str] = None
 

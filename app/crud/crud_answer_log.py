@@ -51,15 +51,34 @@ class CRUDAnswerLog(CRUDBase[AnswerLog, SubmitAnswerRequest, BaseModel]):
                 
         elif question.question_type.value == 'multiple_choice': # <--- 修正为小写！
             print(f"[DEBUG] MULTIPLE_CHOICE: Checking subset and equality")
+            # 1. 检查是否有错选
             if not submitted_option_ids.issubset(correct_option_ids):
                 score_awarded = 0
                 is_correct = False
+            # 2. 如果没有错选，则进行计分
             else:
+                # a. 如果全对
                 if submitted_option_ids == correct_option_ids:
                     score_awarded = question.score
                     is_correct = True
+                # b. 如果少选 (且提交的答案不为空)
+                elif submitted_option_ids:
+                    # 计算每个正确选项的分值
+                    if len(correct_option_ids) > 0:
+                        score_per_correct_option = question.score / len(correct_option_ids)
+                    else: # 避免除以零错误
+                        score_per_correct_option = 0
+                    
+                    # 计算得分：答对的选项数 * 每个选项的分值
+                    num_correctly_chosen = len(submitted_option_ids)
+                    raw_score = num_correctly_chosen * score_per_correct_option
+                    
+                    # 四舍五入到整数
+                    score_awarded = round(raw_score)
+                    is_correct = False # 少选不算完全正确
+                # c. 如果一个都没选，得0分
                 else:
-                    score_awarded = round(question.score / 2)
+                    score_awarded = 0
                     is_correct = False
 
         print(f"[DEBUG] Final Result: is_correct={is_correct}, score_awarded={score_awarded}")
