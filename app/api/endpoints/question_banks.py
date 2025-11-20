@@ -62,3 +62,41 @@ def read_question_banks_for_platform(
     # 这里我们暂时使用 platform 的关系属性来获取
     question_banks = platform.question_banks[skip : skip + limit]
     return {"data": question_banks}
+
+@router.get("/{question_bank_id}", response_model=UnifiedResponse[schemas.QuestionBank])
+def read_question_bank(
+    question_bank_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    bank = crud_question_bank.get(db=db, id=question_bank_id)
+    if not bank:
+        raise HTTPException(status_code=404, detail="Question bank not found")
+    return {"data": bank}
+
+@router.put("/{question_bank_id}", response_model=UnifiedResponse[schemas.QuestionBank])
+def update_question_bank(
+    question_bank_id: int,
+    *,
+    db: Session = Depends(deps.get_db),
+    bank_in: schemas.QuestionBankUpdate,
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    bank = crud_question_bank.get(db=db, id=question_bank_id)
+    if not bank:
+        raise HTTPException(status_code=404, detail="Question bank not found")
+    bank = crud_question_bank.update(db=db, db_obj=bank, obj_in=bank_in)
+    return {"data": bank}
+
+@router.delete("/{question_bank_id}", response_model=UnifiedResponse)
+def delete_question_bank(
+    question_bank_id: int,
+    *,
+    db: Session = Depends(deps.get_db),
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    bank = crud_question_bank.get(db=db, id=question_bank_id)
+    if not bank:
+        raise HTTPException(status_code=404, detail="Question bank not found")
+    crud_question_bank.remove(db=db, id=question_bank_id)
+    return {"msg": "Question bank deleted successfully."}

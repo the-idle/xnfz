@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.crud.base import CRUDBase
 from app.models.question_management import Question, Option
 from app.schemas.question import QuestionCreate, QuestionUpdate
+from typing import List, Optional
+
+
 
 class CRUDQuestion(CRUDBase[Question, QuestionCreate, QuestionUpdate]):
     def get_by_scene_identifier(self, db: Session, *, scene_identifier: str) -> Question | None:
@@ -28,5 +31,11 @@ class CRUDQuestion(CRUDBase[Question, QuestionCreate, QuestionUpdate]):
         db.commit()
         db.refresh(db_question)
         return db_question
+
+    def get_multi_by_procedure(self, db: Session, *, procedure_id: int, skip: int = 0, limit: int = 100) -> List[Question]:
+        """
+        通过工序/点位 ID 查询关联的题目。
+        """
+        return db.query(self.model).filter(self.model.procedure_id == procedure_id).offset(skip).limit(limit).all()
 
 crud_question = CRUDQuestion(Question)

@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.crud.base import CRUDBase
 from app.models.question_management import Procedure
 from app.schemas.procedure import ProcedureCreate, ProcedureUpdate
+from typing import List, Optional
+
+
 
 class CRUDProcedure(CRUDBase[Procedure, ProcedureCreate, ProcedureUpdate]):
     def create_with_bank(
@@ -18,4 +21,7 @@ class CRUDProcedure(CRUDBase[Procedure, ProcedureCreate, ProcedureUpdate]):
         db.refresh(db_obj)
         return db_obj
 
+    def get_multi_by_bank(self, db: Session, *, question_bank_id: int, skip: int = 0, limit: int = 100) -> List[Procedure]:
+        return db.query(self.model).filter(self.model.question_bank_id == question_bank_id).offset(skip).limit(limit).all()
+        
 crud_procedure = CRUDProcedure(Procedure)

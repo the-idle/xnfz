@@ -30,3 +30,52 @@ def create_procedure_for_bank(
     return {"data": procedure}
 
 # 您可以仿照此模式，轻松补全 get_multi, get, update, delete 接口
+@router.get("/", response_model=UnifiedResponse[List[schemas.Procedure]])
+def read_procedures(
+    question_bank_id: int,
+    db: Session = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    # 需要在 crud_procedure 中添加一个 get_multi_by_bank 方法
+    procedures = crud_procedure.get_multi_by_bank(db=db, question_bank_id=question_bank_id, skip=skip, limit=limit)
+    return {"data": procedures}
+
+@router.get("/{procedure_id}", response_model=UnifiedResponse[schemas.Procedure])
+def read_procedure(
+    procedure_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    # 需要在 crud_procedure 中添加一个 get 方法
+    procedure = crud_procedure.get(db=db, id=procedure_id)
+    if not procedure:
+        raise HTTPException(status_code=404, detail="Procedure not found")
+    return {"data": procedure}
+
+@router.put("/{procedure_id}", response_model=UnifiedResponse[schemas.Procedure])
+def update_procedure(
+    procedure_id: int,
+    *,
+    db: Session = Depends(deps.get_db),
+    procedure_in: schemas.ProcedureUpdate,
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    # 需要在 crud_procedure 中添加一个 update 方法
+    procedure = crud_procedure.update(db=db, db_obj=procedure, obj_in=procedure_in)
+    if not procedure:
+        raise HTTPException(status_code=404, detail="Procedure not found")
+    return {"data": procedure}
+
+@router.delete("/{procedure_id}", response_model=UnifiedResponse)
+def delete_procedure(
+    procedure_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: user_models.User = Depends(deps.get_current_user)
+):
+    # 需要在 crud_procedure 中添加一个 delete 方法
+    procedure = crud_procedure.delete(db=db, id=procedure_id)
+    if not procedure:
+        raise HTTPException(status_code=404, detail="Procedure not found")
+    return {"data": procedure}  
