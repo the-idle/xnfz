@@ -60,7 +60,7 @@ def read_question_banks_for_platform(
     
     # crud_question_bank 实例没有 get_multi_by_platform 方法，需要我们自己实现
     # 这里我们暂时使用 platform 的关系属性来获取
-    question_banks = platform.question_banks[skip : skip + limit]
+    question_banks = crud_question_bank.get_multi_by_platform(db=db, platform_id=platform_id, skip=skip, limit=limit)
     return {"data": question_banks}
 
 @router.get("/{question_bank_id}", response_model=UnifiedResponse[schemas.QuestionBank])

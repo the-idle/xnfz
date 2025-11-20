@@ -15,13 +15,26 @@ from app.models.assessment_management import AssessmentResult
 from app.schemas.examinee import BlueprintProcedure
 from app.schemas.response import UnifiedResponse # 导入统一响应模型
 
+
 router = APIRouter()
 
-@router.get("/assessments/recent", response_model=UnifiedResponse[schemas.Assessment])
-def get_recent_assessment(db: Session = Depends(deps.get_db)):
-    assessment = crud_assessment.get_most_recent_active(db=db)
+# @router.get("/assessments/recent", response_model=UnifiedResponse[schemas.Assessment])
+# def get_recent_assessment(db: Session = Depends(deps.get_db)):
+#     assessment = crud_assessment.get_most_recent_active(db=db)
+#     if not assessment:
+#         raise HTTPException(status_code=404, detail="No active assessment found.")
+#     return {"data": assessment}
+@router.get("/platforms/{platform_id}/assessments/upcoming", response_model=UnifiedResponse[schemas.Assessment])
+def get_upcoming_assessment_for_platform(
+    platform_id: int, # <--- 接收 platform_id
+    db: Session = Depends(deps.get_db)
+):
+    """
+    为指定平台获取最优先的（即将开始或正在进行的）一场考核。
+    """
+    assessment = crud_assessment.get_upcoming_or_active(db=db, platform_id=platform_id)
     if not assessment:
-        raise HTTPException(status_code=404, detail="No active assessment found.")
+        raise HTTPException(status_code=404, detail="No upcoming or active assessment found for this platform.")
     return {"data": assessment}
 
 @router.post("/assessments/{assessment_id}/session", response_model=UnifiedResponse[schemas.AssessmentBlueprintResponse])

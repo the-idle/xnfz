@@ -7,27 +7,45 @@ from app.models.question_management import QuestionBank
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session 
 
+
 class CRUDAssessment(CRUDBase[Assessment, AssessmentCreate, AssessmentUpdate]):
     # 目前不需要针对 Assessment 的特殊 CRUD 方法，
     # CRUDBase 提供的通用方法已经足够。
     # 未来如果需要，例如“获取所有正在进行的考核”，可以在这里添加。
-    def get_most_recent_active(self, db: Session) -> Assessment | None:
+    def get_upcoming_or_active(self, db: Session, *, platform_id: int) -> Assessment | None:
         """
-        获取距离现在最近的一场、且在7天内的有效考核。
+        在指定平台下，获取即将开始或正在进行的、最优先的考核。
+        优先级：1. 正在进行的； 2. 即将开始且离现在最近的。
         """
         now = datetime.utcnow()
-        seven_days_later = now + timedelta(days=7)
         
-        return (
+        # 1. 找到该平台下的所有题库ID
+        platform_banks = db.query(QuestionBank.id).filter(QuestionBank.platform_id == platform_id).all()
+        if not platform_banks: return None
+        platform_bank_ids = [b.id for b in platform_banks]
+
+        # 2. 查询所有未结束的考核
+        upcoming_or_active_assessments = (
             db.query(Assessment)
             .filter(
-                Assessment.start_time <= now, # 已经开始
-                Assessment.end_time >= now,   # 尚未结束
-                Assessment.start_time <= seven_days_later # 且开始时间在未来7天内（这个条件其实被前两个覆盖了，主要是为了筛选近期）
+                Assessment.question_bank_id.in_(platform_bank_ids),
+                Assessment.end_time > now # 核心条件：考核尚未结束
             )
-            .order_by(Assessment.start_time.asc()) # 按开始时间升序，获取最早开始的那个
-            .first()
+            .order_by(Assessment.start_time.asc()) # 按开始时间排序
+            .all()
         )
+        
+        if not upcoming_or_active_assessments:
+            return None
+
+        # 3. 应用业务优先级逻辑
+        # 优先返回已经开始的
+        for assessment in upcoming_or_active_assessments:
+            if assessment.start_time <= now:
+                return assessment
+        
+        # 如果没有正在进行的，则返回第一个即将开始的
+        return upcoming_or_active_assessments[0]
 
 
     def check_time_conflict(

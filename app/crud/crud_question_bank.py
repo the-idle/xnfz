@@ -17,6 +17,14 @@ class CRUDQuestionBank(CRUDBase[QuestionBank, QuestionBankCreate, QuestionBankUp
         db.commit()
         db.refresh(db_obj)
         return db_obj
+    
+    def get_multi_by_platform(
+        self, db: Session, *, platform_id: int, skip: int = 0, limit: int = 100
+    ) -> list[QuestionBank]:
+        """
+        获取指定平台下的所有题库。
+        """
+        return db.query(self.model).filter(self.model.platform_id == platform_id).offset(skip).limit(limit).all()
 
 # 创建一个 CRUDQuestionBank 类的实例，供 API 端点使用
 crud_question_bank = CRUDQuestionBank(QuestionBank)
