@@ -40,18 +40,23 @@ pip install -r requirements.txt
 ```
 
 ### 3) 配置环境变量（.env）
+```bash
 APP_NAME="Unity Assessment API"
 DEBUG=True
 SECRET_KEY="change-this-secret"
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
+```
 
 # 默认 MySQL
+```bash
 DATABASE_URL="mysql+pymysql://root:root@localhost:3306/unity_assessment"
+```
 
 # 也可使用 SQLite
+```bash
 # DATABASE_URL="sqlite:///./assessment.db"
-
+```
 
 
 ### 4) 执行数据库迁移（Alembic）
