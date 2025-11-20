@@ -46,18 +46,18 @@ def read_assessment_results(
     return {"data": detailed_results}
 
 @router.get(
-    "/{result_id}",
+    "/assessment-results/{result_id}",
     response_model=UnifiedResponse[schemas.AssessmentResultDetail]
 )
 def read_single_assessment_result(
     result_id: int,
     db: Session = Depends(deps.get_db),
-    current_user: user_models.User = Depends(deps.get_current_user)
+    # current_user: user_models.User = Depends(deps.get_current_user) # 可选鉴权
 ):
     """
-    根据ID获取单次考核详情
+    根据ID获取单次考核详情 (用于前端详情页)
     """
-    # 核心：使用 selectinload 预加载关联数据，提高效率
+    # 使用 selectinload 预加载数据，防止 lazy load 报错
     result = (
         db.query(AssessmentResult)
         .options(
@@ -71,18 +71,16 @@ def read_single_assessment_result(
     if not result:
         raise HTTPException(status_code=404, detail="Assessment result not found")
     
-    # --- 手动组装数据以确保 selected_option_ids 被正确解析 ---
     answer_logs_details = []
     for log in result.answer_logs:
         selected_ids = []
-        # 增加健壮性检查，确保数据能被正确解析
         if isinstance(log.selected_option_ids, list):
             selected_ids = log.selected_option_ids
         elif isinstance(log.selected_option_ids, str):
             try:
                 selected_ids = json.loads(log.selected_option_ids)
             except:
-                pass # 解析失败则返回空列表
+                pass
 
         answer_logs_details.append({
             "question_id": log.question_id,
@@ -91,7 +89,7 @@ def read_single_assessment_result(
             "selected_option_ids": selected_ids
         })
 
-    detailed_result = {
+    detail_data = {
         "id": result.id,
         "total_score": result.total_score,
         "start_time": result.start_time,
@@ -100,4 +98,4 @@ def read_single_assessment_result(
         "answer_logs": answer_logs_details
     }
     
-    return {"data": detailed_result}
+    return {"code": 200, "msg": "success", "data": detail_data}

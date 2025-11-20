@@ -38,6 +38,7 @@ class QuestionUpdate(BaseModel):
     score: Optional[int] = None
     image_url: Optional[str] = None
     # 注意：更新选项通常是一个更复杂的操作（单独的端点），这里我们先简化
+    options: Optional[List[OptionCreate]] = None 
     
 class Question(QuestionBase):
     id: int

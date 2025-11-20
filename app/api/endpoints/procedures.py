@@ -9,6 +9,8 @@ from app.models import user_management as user_models
 from app.crud.crud_procedure import crud_procedure
 from app.crud.crud_question_bank import crud_question_bank 
 from app.schemas.response import UnifiedResponse
+from app.models.question_management import QuestionType
+
 router = APIRouter()
 
 @router.post("/", response_model=UnifiedResponse[schemas.Platform])
@@ -54,6 +56,7 @@ def read_procedure(
         raise HTTPException(status_code=404, detail="Procedure not found")
     return {"data": procedure}
 
+# --- 核心修复：Update 接口 ---
 @router.put("/{procedure_id}", response_model=UnifiedResponse[schemas.Procedure])
 def update_procedure(
     procedure_id: int,
@@ -62,20 +65,27 @@ def update_procedure(
     procedure_in: schemas.ProcedureUpdate,
     current_user: user_models.User = Depends(deps.get_current_user)
 ):
-    # 需要在 crud_procedure 中添加一个 update 方法
-    procedure = crud_procedure.update(db=db, db_obj=procedure, obj_in=procedure_in)
+    # 1. 先查询是否存在
+    procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
         raise HTTPException(status_code=404, detail="Procedure not found")
+    
+    # 2. 再执行更新
+    procedure = crud_procedure.update(db=db, db_obj=procedure, obj_in=procedure_in)
     return {"data": procedure}
 
-@router.delete("/{procedure_id}", response_model=UnifiedResponse)
+# --- 核心修复：Delete 接口 ---
+@router.delete("/{procedure_id}", response_model=UnifiedResponse[schemas.Procedure])
 def delete_procedure(
     procedure_id: int,
     db: Session = Depends(deps.get_db),
     current_user: user_models.User = Depends(deps.get_current_user)
 ):
-    # 需要在 crud_procedure 中添加一个 delete 方法
-    procedure = crud_procedure.delete(db=db, id=procedure_id)
+    # 1. 先查询是否存在
+    procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
         raise HTTPException(status_code=404, detail="Procedure not found")
-    return {"data": procedure}  
+    
+    # 2. 执行删除 (CRUDBase 的方法通常叫 remove)
+    crud_procedure.remove(db=db, id=procedure_id)
+    return {"data": procedure}

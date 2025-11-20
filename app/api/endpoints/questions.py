@@ -52,10 +52,14 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
     if not procedure:
         raise HTTPException(status_code=404, detail="Parent procedure not found")
 
-    existing_question = crud_question.get_by_scene_identifier(db=db, scene_identifier=question_in.scene_identifier)
-    if existing_question:
-        raise HTTPException(status_code=400, detail=f"Question with scene_identifier '{question_in.scene_identifier}' already exists.")
-
+    # --- 核心修复：修改唯一性校验逻辑 ---
+    if question_in.scene_identifier: # 只有当 scene_identifier 不为 None 或空字符串时才检查
+        existing_question = crud_question.get_by_scene_identifier(db=db, scene_identifier=question_in.scene_identifier)
+        if existing_question:
+            raise HTTPException(
+                status_code=409, # 使用 409 Conflict 更合适
+                detail=f"Question with scene_identifier '{question_in.scene_identifier}' already exists."
+            )
     # 3. 处理图片上传 (如果提供了文件)
     image_url_to_save = None
     if image_file:
@@ -118,22 +122,19 @@ def update_question(
     image_file: Optional[UploadFile] = File(None),
     current_user: user_models.User = Depends(deps.get_current_user)
 ):
-    """
-    更新题目信息，支持可选图片上传。
-    若提供新图片，旧图片将被替换。
-    """
     question = crud_question.get(db=db, id=question_id)
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    # 解析 JSON
+    # 1. 解析 JSON
     try:
+        # ⚠️ 如果第一步的 Schema 更新了，这里就能解析出 options
         question_in = schemas.QuestionUpdate.model_validate_json(question_data)
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON format for question_data.")
 
-    # 处理图片上传
-    image_url_to_save = question.image_url  # 默认保留原图
+    # 2. 图片处理
+    image_url_to_save = question.image_url
     if image_file:
         if image_file.content_type not in ["image/jpeg", "image/png", "image/gif"]:
             raise HTTPException(status_code=400, detail="Invalid image type.")
@@ -146,7 +147,10 @@ def update_question(
             image_file.file.close()
 
     question_in.image_url = image_url_to_save
+    
+    # 3. 调用 CRUD
     updated_question = crud_question.update(db=db, db_obj=question, obj_in=question_in)
+    
     return {"data": updated_question}
 
 @router.delete("/{question_id}", response_model=UnifiedResponse[schemas.Question])
