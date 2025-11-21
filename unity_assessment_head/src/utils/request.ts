@@ -3,12 +3,11 @@ import { ElMessage } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 
 const service = axios.create({
-  // 确保地址正确
   baseURL: 'http://127.0.0.1:8000/api/v1', 
   timeout: 5000,
 });
 
-// 请求拦截器
+// 请求拦截器 (保持不变)
 service.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore();
@@ -20,48 +19,47 @@ service.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 响应拦截器
+// 响应拦截器 (核心修改)
 service.interceptors.response.use(
   (response) => {
-    const res = response.data;
-    if (res.code && res.code !== 200) {
-      ElMessage.error(res.msg || '系统错误');
-      return Promise.reject(new Error(res.msg || 'Error'));
+    // 此时 HTTP 状态码是 200
+    // res 结构类似: { code: 404, msg: "No upcoming...", data: null }
+    const res = response.data; 
+
+    // 1. 业务成功
+    if (res.code === 200) {
+      // 兼容：有的接口可能没有 wrap data，或者直接返回了
+      return res.data !== undefined ? res.data : res;
     }
-    return res.data !== undefined ? res.data : res;
+
+    // 2. 业务失败 - 特殊处理 404 (未找到)
+    // 我们不希望 404 弹红色的 "系统错误" 或 "No upcoming..."
+    if (res.code === 404) {
+      // 直接拒绝，把整个 res 对象抛给页面的 catch 去处理
+      return Promise.reject(res);
+    }
+
+    // 3. 其他业务失败 (如 500, 400 参数错误等)
+    // 弹红框提示
+    ElMessage.error(res.msg || '操作失败');
+    return Promise.reject(new Error(res.msg || 'Error'));
   },
   (error) => {
+    // 这里处理 HTTP 状态码非 200 的情况 (如网络断开, Nginx 502 等)
+    // ... 之前的 401 处理逻辑保持不变 ...
     const status = error.response ? error.response.status : 0;
-    const msg = error.response?.data?.detail || error.message || '网络请求失败';
-
-    // --- 核心修复：401 彻底阻断报错 ---
+    
     if (status === 401) {
-      // 1. 避免在登录页重复触发
-      if (!window.location.pathname.includes('/login')) {
-        console.warn('Token 失效，正在强制登出...');
-        
-        // 2. 物理清除 Token (绕过 Pinia，防止 Store 未初始化报错)
+        // ... 之前的强制跳转逻辑 ...
         localStorage.removeItem('token');
-        
-        // 3. 提示用户
-        ElMessage.error('登录已过期，请重新登录');
-        
-        // 4. 强制跳转 (使用 replace 防止后退)
-        window.location.replace('/login');
-        
-        // 5. 【关键】返回一个永远 pending 的 Promise
-        // 这会中断后续代码执行（如组件里的 catch），防止控制台报红字
-        return new Promise(() => {}); 
-      }
+        if (!window.location.pathname.includes('/login')) {
+            ElMessage.error('登录已过期');
+            window.location.href = '/login';
+            return new Promise(() => {});
+        }
     }
-
-    // --- 400/422 业务错误 ---
-    if (status === 400 || status === 422) {
-      return Promise.reject(error);
-    }
-
-    // --- 其他错误 ---
-    ElMessage.error(msg);
+    
+    ElMessage.error(error.message || '网络请求错误');
     return Promise.reject(error);
   }
 );

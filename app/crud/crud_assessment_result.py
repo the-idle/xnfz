@@ -98,5 +98,15 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
                     }
         return answered_map
 
+    def get_finished_session(self, db: Session, *, assessment_id: int, examinee_id: int) -> AssessmentResult | None:
+        """
+        查找一个考生在某场考核下，是否已存在【已完成】的会话。
+        """
+        return db.query(AssessmentResult).filter(
+            AssessmentResult.assessment_id == assessment_id,
+            AssessmentResult.examinee_id == examinee_id,
+            AssessmentResult.end_time != None # 核心条件：end_time 不为空
+        ).first()
+
 
 crud_assessment_result = CRUDAssessmentResult(AssessmentResult)
