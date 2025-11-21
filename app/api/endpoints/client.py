@@ -92,9 +92,9 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
         filtered_proc = BlueprintProcedure(
             id=proc.id,
             name=proc.name,
-            questions=processed_questions
+            questions=questions_with_answers
         )
-        blueprint_to_return.append(processed_proc)
+        blueprint_to_return.append(filtered_proc)
 
         
     # --- 4. 返回最终结果 ---
