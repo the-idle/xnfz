@@ -29,7 +29,7 @@ def create_platform(
     if existing_platform:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Platform with name '{platform_in.name}' already exists.",
+            detail=f"平台名称 '{platform_in.name}' 已存在。",
         )
     # --- 新增区块 结束 ---
 
@@ -56,7 +56,7 @@ def read_platform_by_id(
 ):
     platform = crud_platform.get(db=db, id=platform_id) # 修正 (注意 CRUDBase 中是 id)
     if not platform:
-        raise HTTPException(status_code=404, detail="Platform not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核平台。")
     return {"data": platform}
 
 @router.put("/{platform_id}", response_model=UnifiedResponse[schemas.Platform])
@@ -69,7 +69,7 @@ def update_platform(
 ):
     platform = crud_platform.get(db=db, id=platform_id) # 修正
     if not platform:
-        raise HTTPException(status_code=404, detail="Platform not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核平台。")
     platform = crud_platform.update(db=db, db_obj=platform, obj_in=platform_in) # 修正
     return {"data": platform}
 
@@ -82,6 +82,6 @@ def delete_platform(
 ):
     platform = crud_platform.get(db=db, id=platform_id) # 修正
     if not platform:
-        raise HTTPException(status_code=404, detail="Platform not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核平台。")
     platform = crud_platform.remove(db=db, id=platform_id) # 修正
     return {"data": platform}

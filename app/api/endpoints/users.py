@@ -20,7 +20,7 @@ def create_user(
 ):
     user = crud_user.get_by_username(db, username=user_in.username)
     if user:
-        raise HTTPException(status_code=409, detail="Username already registered.")
+        raise HTTPException(status_code=409, detail="用户名已注册。")
     user = crud_user.create(db=db, obj_in=user_in)
     return {"data": user}
 
@@ -42,7 +42,7 @@ def read_user_by_id(
 ):
     user = crud_user.get(db=db, id=user_id) 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail="未找到指定的用户。")
     return {"data": user}
 
 @router.put("/{user_id}", response_model=UnifiedResponse[schemas.User])
@@ -55,7 +55,7 @@ def update_user(
 ):
     user = crud_user.get(db=db, id=user_id) 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail="未找到指定的用户。")
     user = crud_user.update(db=db, db_obj=user, obj_in=user_in) 
     return {"data": user}
 
@@ -68,9 +68,9 @@ def delete_user(
 ):
     user = crud_user.get(db=db, id=user_id) 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail="未找到指定的用户。")
     # (可选) 增加逻辑：不能删除自己
     if current_user.id == user_id:
-        raise HTTPException(status_code=403, detail="Superusers cannot delete themselves.")
+        raise HTTPException(status_code=403, detail="不能删除自己。")
     crud_user.remove(db=db, id=user_id)
-    return {"msg": f"User {user_id} deleted successfully."}
+    return {"msg": f"用户 {user_id} 删除成功。"}

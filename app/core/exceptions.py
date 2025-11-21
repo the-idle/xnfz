@@ -2,6 +2,9 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi import status
+from fastapi.exceptions import RequestValidationError
+
+
 
 async def http_exception_handler(request: Request, exc: Exception):
     """
@@ -35,5 +38,15 @@ async def business_exception_handler(request: Request, exc: BusinessException):
             "code": exc.code,
             "msg": exc.msg,
             "data": exc.data,
+        }
+    )
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=HTTP_200_OK,
+        content={
+            "code": 422,
+            "msg": "请求参数验证失败",
+            "data": exc.errors() # 返回详细的字段错误信息
         }
     )

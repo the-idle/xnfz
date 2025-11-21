@@ -35,7 +35,7 @@ def create_question_bank_for_platform(
     if existing_bank:
         raise HTTPException(
             status_code=409, # 409 Conflict
-            detail=f"Question bank with name '{question_bank_in.name}' already exists in this platform."
+            detail=f"题库名称 '{question_bank_in.name}' 已存在于该平台中。"
         )
 
     # 2. 创建题库并与平台关联
@@ -60,7 +60,7 @@ def read_question_banks_for_platform(
     # (注意：这个查询逻辑可以进一步优化，但目前可以工作)
     platform = crud_platform.get(db=db, id=platform_id)
     if not platform:
-        raise HTTPException(status_code=404, detail="Parent platform not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核平台。")
     
     # crud_question_bank 实例没有 get_multi_by_platform 方法，需要我们自己实现
     # 这里我们暂时使用 platform 的关系属性来获取
@@ -75,7 +75,7 @@ def read_question_bank(
 ):
     bank = crud_question_bank.get(db=db, id=question_bank_id)
     if not bank:
-        raise HTTPException(status_code=404, detail="Question bank not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题库。")
     return {"data": bank}
 
 @router.put("/{question_bank_id}", response_model=UnifiedResponse[schemas.QuestionBank])
@@ -88,7 +88,7 @@ def update_question_bank(
 ):
     bank = crud_question_bank.get(db=db, id=question_bank_id)
     if not bank:
-        raise HTTPException(status_code=404, detail="Question bank not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题库。")
     bank = crud_question_bank.update(db=db, db_obj=bank, obj_in=bank_in)
     return {"data": bank}
 
@@ -101,6 +101,6 @@ def delete_question_bank(
 ):
     bank = crud_question_bank.get(db=db, id=question_bank_id)
     if not bank:
-        raise HTTPException(status_code=404, detail="Question bank not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题库。")
     crud_question_bank.remove(db=db, id=question_bank_id)
-    return {"msg": "Question bank deleted successfully."}
+    return {"msg": "题库删除成功。"}

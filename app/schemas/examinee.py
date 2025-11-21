@@ -1,6 +1,6 @@
 
 # app/schemas/examinee.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 # --- 蓝图结构 (Blueprint) ---
 class BlueprintOption(BaseModel):
@@ -33,7 +33,7 @@ class BlueprintProcedure(BaseModel):
     questions: List[BlueprintQuestion]
 
 class AssessmentStartRequest(BaseModel):
-    examinee_identifier: str
+    examinee_identifier: str = Field(..., min_length=1, description="考生标识符")
 
 class AssessmentBlueprintResponse(BaseModel):
     """
@@ -44,10 +44,10 @@ class AssessmentBlueprintResponse(BaseModel):
 
 # --- 提交答案的 Schema (SubmitAnswerRequest) ---
 class SubmitAnswerRequest(BaseModel):
-    examinee_identifier: str # <--- 新增，用于校验考生身份
+    examinee_identifier: str = Field(..., min_length=1, description="考生标识符") # <--- 新增，用于校验考生身份
     procedure_id: int # <--- 明确点位ID
     question_id: int # <--- 明确题目ID
-    selected_option_ids: List[int] # <--- 核心修改：提交真实的 option.id
+    selected_option_ids: List[int] = Field(..., min_length=1)# <--- 核心修改：提交真实的 option.id
 
 class SubmitAnswerResponse(BaseModel):
     status: str
@@ -56,4 +56,4 @@ class SubmitAnswerResponse(BaseModel):
 
 # --- 结束考核的 Schema (FinishAssessmentRequest) ---
 class FinishAssessmentRequest(BaseModel):
-    examinee_identifier: str # <--- 新增，用于校验考生身份
+    examinee_identifier: str = Field(..., min_length=1, description="考生标识符") # <--- 新增，用于校验考生身份

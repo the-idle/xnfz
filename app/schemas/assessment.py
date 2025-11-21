@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 from typing import Optional
+from pydantic import Field
 
 
 
@@ -78,39 +79,6 @@ class AssessmentResult(BaseModel):
     class Config:
         orm_mode = True
 
-# # --- Assessment Schemas (用于管理考核场次) ---
-
-# # 基础模型，包含所有 Assessment 共有的字段
-# class AssessmentBase(BaseModel):
-#     title: str
-#     start_time: datetime
-#     end_time: datetime
-#     platform_id: int
-#     question_bank_ids: List[int]
-
-# class Assessment(AssessmentBase):
-#     id: int
-#     platform_id: int
-#     question_bank_ids: List[int]   
-
-# # 创建考核时需要的数据模型
-# class AssessmentCreate(AssessmentBase):
-#     pass # 目前和 Base 一样
-
-# # 更新考核时需要的数据模型，所有字段都应是可选的
-# class AssessmentUpdate(BaseModel):
-#     title: str | None = None
-#     start_time: datetime | None = None
-#     end_time: datetime | None = None
-#     platform_id: int | None = None
-#     question_bank_ids: List[int] | None = None
-
-# # 从数据库读取考核信息时返回的数据模型，包含了 id
-# class AssessmentRead(AssessmentBase):
-#     id: int
-
-#     class Config:
-#         orm_mode = True # 在 Pydantic V2 中应为 from_attributes = True        
 
 # app/schemas/assessment.py
 from pydantic import BaseModel
@@ -118,7 +86,7 @@ from typing import List, Optional
 from datetime import datetime
 
 class AssessmentBase(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, description="考核标题")
     start_time: datetime
     end_time: datetime
 
@@ -126,7 +94,7 @@ class AssessmentCreate(AssessmentBase):
     question_bank_id: int # <--- 核心修改
 
 class AssessmentUpdate(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, description="考核标题")
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     question_bank_id: Optional[int] = None

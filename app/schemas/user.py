@@ -4,7 +4,7 @@ from typing import Optional
 
 # --- User Schemas ---
 class UserBase(BaseModel):
-    username: str
+    username: str = Field(..., min_length=1, description="用户名")
 
 class UserCreate(UserBase):
     password: str=Field(..., min_length=6)
@@ -13,7 +13,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=6)
     is_superuser: Optional[bool] = None
-    
+
 class User(UserBase):
     id: int
     is_superuser: bool

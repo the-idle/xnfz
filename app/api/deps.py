@@ -34,7 +34,7 @@ def get_current_user(
         # 如果 token 无效或 payload 格式不正确，则抛出异常
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials",
+            detail="身份凭证无效或已过期，请重新登录。",
         )
     
     # 从 token 中获取用户名，并从数据库中查找用户
@@ -42,12 +42,12 @@ def get_current_user(
     
     if not user:
         # 如果在数据库中找不到该用户，抛出异常
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="未找到指定的用户。")
         
     return user
 
 # app/api/deps.py
 def get_current_active_superuser(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+        raise HTTPException(status_code=403, detail="用户权限不足，无法执行此操作。")
     return current_user

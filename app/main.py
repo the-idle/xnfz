@@ -8,7 +8,8 @@ from fastapi.exceptions import HTTPException
 from app.core.exceptions import http_exception_handler, BusinessException, business_exception_handler
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.core.exceptions import validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 # 2. (重要) 导入所有数据库模型，以确保 SQLAlchemy 在启动时能识别它们
 #    这是解决运行时 "failed to locate a name" 错误的关键
 from app.models import user_management
@@ -37,6 +38,8 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")    
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(BusinessException, business_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
 # 4. (重要) 移除 startup 事件中的 create_all。
 #    我们完全信任 Alembic 来管理数据库迁移。
 

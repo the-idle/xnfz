@@ -26,7 +26,7 @@ def create_procedure_for_bank(
     """
     bank = crud_question_bank.get(db=db, id=question_bank_id)
     if not bank:
-        raise HTTPException(status_code=404, detail="Parent question bank not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题库。")
     
     procedure = crud_procedure.create_with_bank(db=db, obj_in=procedure_in, question_bank_id=question_bank_id)
     return {"data": procedure}
@@ -53,7 +53,7 @@ def read_procedure(
     # 需要在 crud_procedure 中添加一个 get 方法
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
-        raise HTTPException(status_code=404, detail="Procedure not found")
+        raise HTTPException(status_code=404, detail="未找到指定的工序/点位。")
     return {"data": procedure}
 
 # --- 核心修复：Update 接口 ---
@@ -68,7 +68,7 @@ def update_procedure(
     # 1. 先查询是否存在
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
-        raise HTTPException(status_code=404, detail="Procedure not found")
+        raise HTTPException(status_code=404, detail="未找到指定的工序/点位。")
     
     # 2. 再执行更新
     procedure = crud_procedure.update(db=db, db_obj=procedure, obj_in=procedure_in)
@@ -84,7 +84,7 @@ def delete_procedure(
     # 1. 先查询是否存在
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
-        raise HTTPException(status_code=404, detail="Procedure not found")
+        raise HTTPException(status_code=404, detail="未找到指定的工序/点位。")
     
     # 2. 执行删除 (CRUDBase 的方法通常叫 remove)
     crud_procedure.remove(db=db, id=procedure_id)

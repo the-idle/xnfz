@@ -25,7 +25,7 @@ def upload_image(
     """
     # 校验文件类型
     if file.content_type not in ["image/jpeg", "image/png", "image/gif"]:
-        raise HTTPException(status_code=400, detail="Invalid image type. Only JPEG, PNG, GIF are allowed.")
+        raise HTTPException(status_code=400, detail="仅支持上传 JPEG、PNG、GIF 格式的图片。")
     
     try:
         # 创建一个安全的文件名 (例如，使用时间戳或UUID)

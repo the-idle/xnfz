@@ -73,7 +73,7 @@ def read_single_assessment_result(
     )
     
     if not result:
-        raise HTTPException(status_code=404, detail="Assessment result not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核结果。")
     
     # 2. 手动组装数据
     answer_logs_details = []

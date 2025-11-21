@@ -45,12 +45,12 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
     try:
         question_in = schemas.QuestionCreate.model_validate_json(question_data)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format for question_data.")
+        raise HTTPException(status_code=400, detail="题目数据格式无效。")
         
     # 2. 检查父级工序和 scene_identifier 是否重复 (逻辑不变)
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
-        raise HTTPException(status_code=404, detail="Parent procedure not found")
+        raise HTTPException(status_code=404, detail="未找到指定的工序/点位。")
 
     # --- 核心修复：修改唯一性校验逻辑 ---
     if question_in.scene_identifier: # 只有当 scene_identifier 不为 None 或空字符串时才检查
@@ -58,13 +58,13 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
         if existing_question:
             raise HTTPException(
                 status_code=409, # 使用 409 Conflict 更合适
-                detail=f"Question with scene_identifier '{question_in.scene_identifier}' already exists."
+                detail=f"针对该工序/点位的题目已存在，scene_identifier: '{question_in.scene_identifier}'。"
             )
     # 3. 处理图片上传 (如果提供了文件)
     image_url_to_save = None
     if image_file:
         if image_file.content_type not in ["image/jpeg", "image/png", "image/gif"]:
-            raise HTTPException(status_code=400, detail="Invalid image type.")
+            raise HTTPException(status_code=400, detail="无效的图片类型。")
         
         try:
             file_path = UPLOAD_DIR / f"{datetime.utcnow().timestamp()}_{image_file.filename}"
@@ -110,7 +110,7 @@ def read_question(
     """
     question = crud_question.get(db=db, id=question_id)
     if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题目。")
     return {"data": question}
 
 @router.put("/{question_id}", response_model=UnifiedResponse[schemas.Question])
@@ -124,20 +124,20 @@ def update_question(
 ):
     question = crud_question.get(db=db, id=question_id)
     if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题目。")
 
     # 1. 解析 JSON
     try:
         # ⚠️ 如果第一步的 Schema 更新了，这里就能解析出 options
         question_in = schemas.QuestionUpdate.model_validate_json(question_data)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format for question_data.")
+        raise HTTPException(status_code=400, detail="题目数据格式无效。")
 
     # 2. 图片处理
     image_url_to_save = question.image_url
     if image_file:
         if image_file.content_type not in ["image/jpeg", "image/png", "image/gif"]:
-            raise HTTPException(status_code=400, detail="Invalid image type.")
+            raise HTTPException(status_code=400, detail="无效的图片类型。")
         try:
             file_path = UPLOAD_DIR / f"{datetime.utcnow().timestamp()}_{image_file.filename}"
             with file_path.open("wb") as buffer:
@@ -164,7 +164,7 @@ def delete_question(
     """
     question = crud_question.get(db=db, id=question_id)
     if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
+        raise HTTPException(status_code=404, detail="未找到指定的题目。")
     removed_question = crud_question.remove(db=db, id=question_id)
     return {"data": removed_question}
 

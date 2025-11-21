@@ -34,7 +34,7 @@ def create_assessment(
     if has_conflict:
         raise HTTPException(
             status_code=409, # 409 Conflict
-            detail="An assessment for the same platform and overlapping time already exists."
+            detail="针对同一平台和重叠时间的评估已经存在。"
         )
     # --- 校验结束 ---
 
@@ -67,7 +67,7 @@ def read_assessment_by_id(
     """
     assessment = crud_assessment.get(db=db, id=assessment_id) # 修正
     if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核场次。")
     return {"data": assessment}
 
 @router.put("/{assessment_id}", response_model=UnifiedResponse[schemas.Assessment]) # 建议返回 Read Schema
@@ -83,7 +83,7 @@ def update_assessment(
     """
     assessment = crud_assessment.get(db=db, id=assessment_id) # 修正
     if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核场次。")
     assessment = crud_assessment.update(db=db, db_obj=assessment, obj_in=assessment_in) # 修正
     return {"data": assessment}
 
@@ -99,7 +99,7 @@ def delete_assessment(
     """
     assessment = crud_assessment.get(db=db, id=assessment_id) # 修正
     if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+        raise HTTPException(status_code=404, detail="未找到指定的考核场次。")
     assessment = crud_assessment.remove(db=db, id=assessment_id) # 修正
     return {"data": assessment}
     # return {"msg": "已成功删除 考核场次."}
