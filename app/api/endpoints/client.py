@@ -8,6 +8,9 @@ from app.crud.crud_assessment import crud_assessment
 from app.crud.crud_examinee import crud_examinee
 from app.crud.crud_assessment_result import crud_assessment_result
 from app.crud.crud_answer_log import crud_answer_log
+from app.crud.crud_platform import crud_platform
+from app.core.exceptions import BusinessException
+from app.core.security import verify_password
 
 
 from app.crud.crud_blueprint import build_assessment_blueprint
@@ -15,6 +18,7 @@ from app.models.assessment_management import AssessmentResult
 from app.schemas.examinee import BlueprintProcedure
 from app.schemas.response import UnifiedResponse # 导入统一响应模型
 from app.models.assessment_management import AnswerLog
+
 
 
 router = APIRouter()
@@ -155,3 +159,40 @@ def finish_assessment(result_id: int, *, db: Session = Depends(deps.get_db), fin
     result.end_time = datetime.utcnow()
     db.add(result); db.commit()
     return {"data": {"status": "finished", "final_score": result.total_score}}
+
+@router.post(
+    "/platforms/{platform_id}/verify-password",
+    response_model=UnifiedResponse # 响应模型保持不变
+)
+def verify_platform_password(
+    platform_id: int,
+    *,
+    db: Session = Depends(deps.get_db),
+    request_body: schemas.VerifyPlatformPasswordRequest
+):
+    """
+    验证平台密码是否正确。
+    """
+    # 1. 查找平台
+    platform = crud_platform.get(db=db, id=platform_id)
+    if not platform:
+        # --- 核心修改：使用 BusinessException ---
+        raise BusinessException(code=404, msg="平台未找到")
+        
+    # 2. 检查平台是否设置了密码
+    if not platform.hashed_password:
+        # --- 核心修改：使用 BusinessException ---
+        raise BusinessException(code=400, msg="该平台未设置密码保护")
+        
+    # 3. 验证密码
+    is_password_correct = verify_password(
+        request_body.password, platform.hashed_password
+    )
+    
+    if not is_password_correct:
+        # --- 核心修改：使用 BusinessException ---
+        raise BusinessException(code=401, msg="平台密码错误")
+
+    # 4. 如果验证通过，返回符合 UnifiedResponse 格式的成功响应
+    # 之前的 {"msg": "..."} 会被自动包装，但显式返回更清晰
+    return UnifiedResponse(msg="密码验证成功")

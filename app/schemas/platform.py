@@ -13,12 +13,14 @@ class PlatformBase(BaseModel):
 
 # 创建平台时使用的模型 (继承自 Base)
 class PlatformCreate(PlatformBase):
+    password: Optional[str] = Field( min_length=6, description="平台密码，留空则不设置")
     pass
 
 # 更新平台时使用的模型 (所有字段都是可选的)
 class PlatformUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1)
     description: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=6, description="新的平台密码，留空则不修改")
 
 # 从数据库读取平台数据时使用的模型 (包含 id)
 class Platform(PlatformBase):

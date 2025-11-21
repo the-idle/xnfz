@@ -57,3 +57,6 @@ class SubmitAnswerResponse(BaseModel):
 # --- 结束考核的 Schema (FinishAssessmentRequest) ---
 class FinishAssessmentRequest(BaseModel):
     examinee_identifier: str = Field(..., min_length=1, description="考生标识符") # <--- 新增，用于校验考生身份
+
+class VerifyPlatformPasswordRequest(BaseModel):
+    password: str = Field(..., min_length=1, description="待验证的平台密码")

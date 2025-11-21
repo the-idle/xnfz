@@ -17,6 +17,8 @@ class Platform(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(191), nullable=False, unique=True, comment="如：班组长现场管理平台 V1.0")
     description = Column(Text)
+
+    hashed_password = Column(String(255), nullable=True, comment="平台密码的哈希值")
     
     question_banks = relationship("QuestionBank", back_populates="platform", cascade="all, delete-orphan")
 

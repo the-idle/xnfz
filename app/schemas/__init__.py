@@ -66,7 +66,8 @@ from .examinee import (
     BlueprintQuestion,
     BlueprintProcedure,
     AssessmentBlueprintResponse,
-    FinishAssessmentRequest
+    FinishAssessmentRequest,
+    VerifyPlatformPasswordRequest
 )
 
 from .result import (
