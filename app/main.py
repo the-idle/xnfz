@@ -50,3 +50,11 @@ def health_check():
 
 # 6. 将您的主 API 路由器包含进来，并添加统一的前缀
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        app=app,
+        host="0.0.0.0",
+        port=8000,
+    )

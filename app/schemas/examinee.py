@@ -81,6 +81,7 @@ class BlueprintQuestion(BaseModel):
     image_url: Optional[str] = None
     options: List[BlueprintOption]
     selected_option_ids: Optional[List[int]] = None
+    score_awarded: int|None = None
 
 class BlueprintProcedure(BaseModel):
     """

@@ -56,6 +56,7 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
     
     # 2. 获取已回答题目的详细信息映射
     answered_logs_map = crud_assessment_result.get_answered_logs_map(db=db, result_id=session.id)
+    print("map数据",answered_logs_map)
     answered_question_ids = set(answered_logs_map.keys())
 
     # 3. 核心逻辑：过滤已完成的工序，并为题目注入已选答案
@@ -76,10 +77,12 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
             
             # 检查当前题目是否已回答，如果是，则注入已选答案
             if question.id in answered_logs_map:
-                question_data['selected_option_ids'] = answered_logs_map[question.id]
-            
+                question_data['selected_option_ids'] = answered_logs_map[question.id]['selected_option_ids']
+                question_data['score_awarded'] = answered_logs_map[question.id]['score_awarded']
+
             questions_with_answers.append(question_data)
-        
+            print("数据", question_data)
+
         # d. 创建一个新的工序对象，包含处理过的题目列表
         filtered_proc = BlueprintProcedure(
             id=proc.id,
