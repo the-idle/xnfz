@@ -72,7 +72,7 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
                 shutil.copyfileobj(image_file.file, buffer)
             
             # 保存相对路径到数据库
-            image_url_to_save = f"/{file_path}"
+            image_url_to_save = f"/{file_path}".replace("\\", "/")
         finally:
             image_file.file.close()
 

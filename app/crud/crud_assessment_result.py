@@ -1,4 +1,6 @@
 # app/crud/crud_assessment_result.py
+import json
+
 from sqlalchemy.orm import Session
 from app.crud.base import CRUDBase
 from app.models.assessment_management import AssessmentResult, AnswerLog, Assessment
@@ -79,12 +81,21 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
             # 确保 selected_option_ids 是一个列表
             # SQLAlchemy 的 JSON 类型会自动反序列化
             if isinstance(log.selected_option_ids, list):
-                answered_map[log.question_id] = log.selected_option_ids
+                answered_map[log.question_id] = {
+                        'score_awarded':log.score_awarded,
+                        'selected_option_ids':log.selected_option_ids
+                    }
             else: # 作为后备方案，如果存的是字符串，则手动解析
                 try:
-                    answered_map[log.question_id] = json.loads(log.selected_option_ids)
+                    answered_map[log.question_id] = {
+                        'score_awarded':log.score_awarded,
+                        'selected_option_ids':json.loads(log.selected_option_ids)
+                    }
                 except (json.JSONDecodeError, TypeError):
-                    answered_map[log.question_id] = []
+                    answered_map[log.question_id] = {
+                        'score_awarded':None,
+                        'selected_option_ids':[]
+                    }
         return answered_map
 
 

@@ -36,7 +36,7 @@ def upload_image(
         
         # 返回一个可供前端访问的相对路径
         # (需要 FastAPI 配置静态文件服务)
-        file_url = f"/{file_path}"
+        file_url = f"/{file_path}".replace("\\", "/")
         
         return {"data": {"file_url": file_url}}
     finally:

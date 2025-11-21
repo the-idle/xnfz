@@ -83,12 +83,13 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
             
             # 关键：如果题目已回答，就从 map 中获取答案并注入
             if question.id in answered_logs_map:
-                question_data['selected_option_ids'] = answered_logs_map[question.id]
-            
-            processed_questions.append(question_data)
-        
-        # c. 用处理过的新题目列表，构建新的工序对象
-        processed_proc = BlueprintProcedure(
+                question_data['selected_option_ids'] = answered_logs_map[question.id]['selected_option_ids']
+                question_data['score_awarded'] = answered_logs_map[question.id]['score_awarded']
+
+            questions_with_answers.append(question_data)
+
+        # d. 创建一个新的工序对象，包含处理过的题目列表
+        filtered_proc = BlueprintProcedure(
             id=proc.id,
             name=proc.name,
             questions=processed_questions
