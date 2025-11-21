@@ -2,7 +2,7 @@
     <div class="app-layout">
       <!-- 左侧侧边栏 -->
       <el-aside width="220px" class="sidebar">
-        <div class="logo">Unity Admin</div>
+        <div class="logo">虚拟实训考核后台管理</div>
         <el-menu
           :default-active="$route.path"
           router

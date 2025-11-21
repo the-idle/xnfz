@@ -8,8 +8,9 @@ from app.models import user_management as user_models
 from app.crud.crud_assessment_result import crud_assessment_result
 from app.schemas.response import UnifiedResponse
 from fastapi import HTTPException
-from app.models.assessment_management import AssessmentResult
 from sqlalchemy.orm import selectinload
+from app.models.assessment_management import AssessmentResult, AnswerLog
+from app.models.question_management import Question, Option
 
 router = APIRouter()
 
@@ -39,12 +40,13 @@ def read_assessment_results(
             "total_score": res.total_score,
             "start_time": res.start_time,
             "end_time": res.end_time,
-            "examinee_identifier": res.examinee.identifier,
-            "answer_logs": res.answer_logs
+            "examinee_identifier": res.examinee.identifier if res.examinee else "Unknown",
+            "answer_logs": [] # 列表页不需要加载详细题目，留空以提升性能
         })
 
-    return {"data": detailed_results}
+    return {"code": 200, "msg": "success", "data": detailed_results}
 
+# 2. 获取详情接口 (修复点：确保路径是 /assessment-results/{result_id})
 @router.get(
     "/assessment-results/{result_id}",
     response_model=UnifiedResponse[schemas.AssessmentResultDetail]
@@ -52,17 +54,19 @@ def read_assessment_results(
 def read_single_assessment_result(
     result_id: int,
     db: Session = Depends(deps.get_db),
-    # current_user: user_models.User = Depends(deps.get_current_user) # 可选鉴权
+    # current_user: user_models.User = Depends(deps.get_current_user)
 ):
     """
-    根据ID获取单次考核详情 (用于前端详情页)
+    根据ID获取单次考核详情 (详情视图，包含题目信息)
     """
-    # 使用 selectinload 预加载数据，防止 lazy load 报错
+    # 1. 级联查询：结果 -> 日志 -> 题目 -> 选项
     result = (
         db.query(AssessmentResult)
         .options(
             selectinload(AssessmentResult.examinee),
             selectinload(AssessmentResult.answer_logs)
+            .selectinload(AnswerLog.question)
+            .selectinload(Question.options)
         )
         .filter(AssessmentResult.id == result_id)
         .first()
@@ -71,25 +75,53 @@ def read_single_assessment_result(
     if not result:
         raise HTTPException(status_code=404, detail="Assessment result not found")
     
+    # 2. 手动组装数据
     answer_logs_details = []
-    for log in result.answer_logs:
-        selected_ids = []
-        if isinstance(log.selected_option_ids, list):
-            selected_ids = log.selected_option_ids
-        elif isinstance(log.selected_option_ids, str):
-            try:
-                selected_ids = json.loads(log.selected_option_ids)
-            except:
-                pass
+    
+    # 按题目ID排序，保证展示顺序稳定
+    sorted_logs = sorted(result.answer_logs, key=lambda x: x.question_id)
 
-        answer_logs_details.append({
+    for log in sorted_logs:
+        # 处理 selected_option_ids (兼容 list 和 json string)
+        selected_ids = []
+        if log.selected_option_ids:
+            if isinstance(log.selected_option_ids, list):
+                selected_ids = log.selected_option_ids
+            elif isinstance(log.selected_option_ids, str):
+                try:
+                    selected_ids = json.loads(log.selected_option_ids)
+                except:
+                    selected_ids = []
+
+        # 基础日志数据
+        log_data = {
             "question_id": log.question_id,
             "score_awarded": log.score_awarded,
             "answered_at": log.answered_at,
-            "selected_option_ids": selected_ids
-        })
+            "selected_option_ids": selected_ids,
+            "question": None # 默认为 None
+        }
 
-    detail_data = {
+        # 注入题目详情 (Snapshoting)
+        if log.question:
+            log_data["question"] = {
+                "prompt": log.question.prompt,
+                "question_type": log.question.question_type,
+                "score": log.question.score,
+                "options": [
+                    {
+                        "id": opt.id, 
+                        "option_text": opt.option_text, 
+                        "is_correct": opt.is_correct
+                    } 
+                    # 选项也排个序
+                    for opt in sorted(log.question.options, key=lambda x: x.id)
+                ]
+            }
+        
+        answer_logs_details.append(log_data)
+
+    detailed_result = {
         "id": result.id,
         "total_score": result.total_score,
         "start_time": result.start_time,
@@ -98,4 +130,4 @@ def read_single_assessment_result(
         "answer_logs": answer_logs_details
     }
     
-    return {"code": 200, "msg": "success", "data": detail_data}
+    return {"code": 200, "msg": "success", "data": detailed_result}

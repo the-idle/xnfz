@@ -69,6 +69,7 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
     # --- 3. 【核心修复】二次加工蓝图，注入已选答案 ---
     blueprint_to_return = []
     for proc in full_blueprint:
+        
         question_ids_in_proc = {q.id for q in proc.questions}
         
         # a. 如果工序已完成，则过滤掉

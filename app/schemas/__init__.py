@@ -70,7 +70,10 @@ from .examinee import (
 )
 
 from .result import (
-    AssessmentResultDetail
+    AssessmentResultDetail,
+    AnswerLogDetail,
+    QuestionSnapshot,
+    OptionSnapshot,
 )
 
 

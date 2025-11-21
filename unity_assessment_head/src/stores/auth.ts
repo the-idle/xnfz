@@ -1,42 +1,53 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import axios from 'axios'; // 使用原生 axios，绕过拦截器
+import axios from 'axios';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '');
 
-  // 1. 确保这里的地址是你后端的真实地址
-  // 注意：必须指向 /login/token
+  // 确保地址正确
   const LOGIN_URL = 'http://127.0.0.1:8000/api/v1/login/token';
 
   const login = async (username, password) => {
-    console.log("正在尝试登录:", username); // 调试日志
-
-    // 2. 构建表单数据 (OAuth2 密码流标准)
+    // 构建表单数据
     const params = new URLSearchParams();
     params.append('username', username);
     params.append('password', password);
 
     try {
-      // 3. 发送请求
+      // 发送请求
       const res = await axios.post(LOGIN_URL, params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
 
-      console.log("登录响应:", res.data); // 调试日志
+      const resData = res.data;
 
-      // 4. 保存 Token
-      if (res.data.access_token) {
-        token.value = res.data.access_token;
-        localStorage.setItem('token', res.data.access_token);
-      } else {
-        throw new Error('未获取到 Token');
+      // --- 核心修复：优先处理统一响应格式的错误 ---
+      // 你的截图显示后端返回了 { code: 400, msg: "...", data: null }
+      if (resData.code && resData.code !== 200) {
+        // 抛出后端返回的具体错误信息 (例如 "Incorrect username or password")
+        throw new Error(resData.msg || '登录失败');
       }
+
+      // --- 获取 Token ---
+      // 兼容两种情况：
+      // 1. 标准 OAuth2: 直接在根对象 { access_token: "..." }
+      // 2. 统一响应: 在 data 字段 { data: { access_token: "..." } }
+      const accessToken = resData.access_token || resData.data?.access_token;
+
+      if (accessToken) {
+        token.value = accessToken;
+        localStorage.setItem('token', accessToken);
+      } else {
+        // 如果 code 是 200 但没有 token，这才是真正的“未获取到 Token”
+        throw new Error('登录成功但未获取到令牌');
+      }
+
     } catch (error: any) {
-      console.error("登录请求出错:", error);
-      // 抛出错误让 Login.vue 捕获并显示提示
+      // 重新抛出错误给 Login.vue 处理
+      // 如果是 axios 的网络错误，保留原样；如果是我们上面 throw new Error 的，也保留
       throw error;
     }
   };
