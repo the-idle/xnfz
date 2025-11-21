@@ -86,13 +86,13 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
                 question_data['selected_option_ids'] = answered_logs_map[question.id]['selected_option_ids']
                 question_data['score_awarded'] = answered_logs_map[question.id]['score_awarded']
 
-            questions_with_answers.append(question_data)
+            processed_questions.append(question_data)
 
         # d. 创建一个新的工序对象，包含处理过的题目列表
         filtered_proc = BlueprintProcedure(
             id=proc.id,
             name=proc.name,
-            questions=questions_with_answers
+            questions=processed_questions
         )
         blueprint_to_return.append(filtered_proc)
 
