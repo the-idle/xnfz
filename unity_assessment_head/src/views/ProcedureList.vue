@@ -65,12 +65,17 @@ const openDialog = (type: string, row?: any) => {
 
 // --- 修复重点：路径参数确保正确 ---
 const handleSubmit = async () => {
+  // --- 核心修复：添加非空校验 ---
+  if (!form.value.name || !form.value.name.trim()) {
+    ElMessage.warning('工序名称不能为空');
+    return;
+  }
+
   try {
     if (dialogType.value === 'create') {
       await request.post(`/question-banks/${bankId}/procedures/`, { name: form.value.name });
     } else {
-      // 这里的路径必须和后端 api/endpoints/procedures.py 里的路径一致
-      // 通常是 PUT /question-banks/{bank_id}/procedures/{procedure_id}
+      // PUT 请求
       await request.put(`/question-banks/${bankId}/procedures/${form.value.id}`, { name: form.value.name });
     }
     ElMessage.success('操作成功');
@@ -78,7 +83,6 @@ const handleSubmit = async () => {
     fetchData();
   } catch (e) { 
     console.error(e); 
-    // 如果是 500，不用 ElMessage 报出来，request.ts 拦截器通常会报
   }
 };
 

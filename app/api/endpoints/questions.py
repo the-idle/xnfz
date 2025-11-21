@@ -44,8 +44,16 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
     # 1. 解析 JSON 字符串为 Pydantic 模型
     try:
         question_in = schemas.QuestionCreate.model_validate_json(question_data)
+    except ValidationError as e:
+        # 如果 Pydantic 验证失败 (例如，字段为空字符串)
+        # 我们将其捕获，并转换为我们自己的、友好的业务异常
+        # e.errors() 包含了详细的错误信息列表
+        error_details = e.errors()[0]
+        field = ".".join(map(str, error_details['loc']))
+        msg = f"字段 '{field}' 验证失败：{error_details['msg']}"
+        raise BusinessException(code=422, msg=msg)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="题目数据格式无效。")
+        raise BusinessException(code=400, msg="question_data 字段必须为有效的 JSON 字符串。")
         
     # 2. 检查父级工序和 scene_identifier 是否重复 (逻辑不变)
     procedure = crud_procedure.get(db=db, id=procedure_id)

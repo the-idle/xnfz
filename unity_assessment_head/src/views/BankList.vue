@@ -60,17 +60,29 @@ const openDialog = (type: string, row?: any) => {
 };
 
 const handleSubmit = async () => {
+  // --- 核心修复：前端先校验，不要发空数据给后端 ---
+  if (!form.value.name || !form.value.name.trim()) {
+    ElMessage.warning('题库名称不能为空');
+    return; // 直接中断，不发请求
+  }
+
   try {
     if (dialogType.value === 'create') {
       await request.post(`/platforms/${platformId}/question-banks/`, form.value);
     } else {
-      // 根据你的API列表，更新路径可能是 /platforms/{pid}/question-banks/{bid}
-      await request.put(`/platforms/${platformId}/question-banks/${form.value.id}`, form.value);
+      // 确保这里只发送 name 字段，或者后端 update schema 允许其他字段
+      await request.put(`/platforms/${platformId}/question-banks/${form.value.id}`, {
+        name: form.value.name
+      });
     }
     ElMessage.success('操作成功');
     dialogVisible.value = false;
     fetchData();
-  } catch (e) {}
+  } catch (e: any) {
+    // 如果后端还是报错，这里会捕获
+    // 之前的 request.ts 已经处理了大部分报错
+    console.error(e);
+  }
 };
 
 const handleDelete = async (id: number) => {

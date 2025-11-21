@@ -47,23 +47,12 @@ const handleLogin = async () => {
     ElMessage.success('登录成功');
     router.push('/platforms'); 
   } catch (error: any) {
-    console.error("登录报错:", error);
-
-    // --- 核心修复：优先显示 Error 对象的 message ---
-    // 因为我们在 auth.ts 里手动 throw new Error(resData.msg)
-    let errorMsg = error.message || '登录失败';
-
-    // 汉化处理
-    if (errorMsg.includes('Incorrect username or password')) {
-        errorMsg = '用户名或密码错误';
-    }
-
-    // 只有当是纯网络错误时，才去检查 response (防御性编程)
-    if (errorMsg === 'Network Error') {
-        errorMsg = '无法连接到服务器';
-    }
-
-    ElMessage.error(errorMsg);
+    console.error("Login error:", error);
+    
+    // --- 核心修复：直接显示错误信息 ---
+    // 这里的 error.message 就是后端返回的 "用户名或密码错误"
+    const msg = error.message || '登录失败，请检查网络';
+    ElMessage.error(msg);
   } finally {
     loading.value = false;
   }

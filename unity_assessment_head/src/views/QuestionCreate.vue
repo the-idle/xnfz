@@ -208,64 +208,70 @@
   };
   
   const submitQuestion = async () => {
-    if (!qForm.value.prompt) return ElMessage.warning('请填写题干');
-    const validOptions = qForm.value.options.filter(o => o.option_text.trim());
+  if (!qForm.value.prompt || !qForm.value.prompt.trim()) {
+    return ElMessage.warning('请填写题干');
+  }
+
+  // 1. 先过滤出有效选项（去掉空内容的）
+  const validOptions = qForm.value.options.filter(o => o.option_text && o.option_text.trim() !== '');
+  
+  // 2. 校验数量
+  if (qForm.value.question_type === 'MULTIPLE_CHOICE') {
+    if (validOptions.length < 2) {
+      return ElMessage.warning('多选题至少需要两个有效选项');
+    }
+  } else {
+    if (validOptions.length < 1) {
+      return ElMessage.warning('至少填写一个有效选项');
+    }
+  }
+  
+  // 3. 校验答案 (注意：要在有效选项里找正确答案)
+  const hasCorrect = validOptions.some(o => o.is_correct);
+  if (!hasCorrect) return ElMessage.warning('请至少设置一个正确答案');
+
+  submitting.value = true;
+  try {
+    const formData = new FormData();
+    const finalIdentifier = qForm.value.scene_identifier ? qForm.value.scene_identifier.trim() : '';
+
+    const payload = {
+      prompt: qForm.value.prompt,
+      question_type: qForm.value.question_type,
+      scene_identifier: finalIdentifier, 
+      score: qForm.value.score,
+      // --- 核心修复：只发送过滤后的 validOptions，而不是原始的 qForm.value.options ---
+      options: validOptions 
+    };
     
-    // --- 修复：按类型校验选项数量 ---
-    if (qForm.value.question_type === 'MULTIPLE_CHOICE') {
-      if (validOptions.length < 2) {
-        return ElMessage.warning('多选题至少需要两个有效选项');
-      }
+    formData.append('question_data', JSON.stringify(payload));
+
+    if (imageFile.value) {
+      formData.append('image_file', imageFile.value);
+    }
+
+    if (isEditMode.value) {
+      await request.put(`/procedures/${procedureId}/questions/${questionId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      ElMessage.success('修改保存成功');
     } else {
-      // 单选或扣分单选
-      if (validOptions.length < 1) {
-        return ElMessage.warning('至少填写一个有效选项');
-      }
+      await request.post(`/procedures/${procedureId}/questions/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      ElMessage.success('创建成功');
     }
-    
-    const hasCorrect = qForm.value.options.some(o => o.is_correct);
-    if (!hasCorrect) return ElMessage.warning('请至少设置一个正确答案');
-  
-    submitting.value = true;
-    try {
-      const formData = new FormData();
-      const finalIdentifier = qForm.value.scene_identifier ? qForm.value.scene_identifier.trim() : '';
-  
-      const payload = {
-        prompt: qForm.value.prompt,
-        question_type: qForm.value.question_type,
-        scene_identifier: finalIdentifier, 
-        score: qForm.value.score,
-        options: qForm.value.options
-      };
-      
-      formData.append('question_data', JSON.stringify(payload));
-  
-      if (imageFile.value) {
-        formData.append('image_file', imageFile.value);
-      }
-  
-      if (isEditMode.value) {
-        await request.put(`/procedures/${procedureId}/questions/${questionId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        ElMessage.success('修改保存成功');
-      } else {
-        await request.post(`/procedures/${procedureId}/questions/`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        ElMessage.success('创建成功');
-      }
-  
-      goBack();
-    } catch (e: any) {
-      console.error(e);
-      const msg = e.response?.data?.detail || '提交失败';
-      ElMessage.error(msg);
-    } finally {
-      submitting.value = false;
-    }
-  };
+
+    goBack();
+  } catch (e: any) {
+    console.error(e);
+    const msg = e.response?.data?.detail || '提交失败';
+    // 优化报错显示：如果是数组（字段验证错误），转字符串
+    ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  } finally {
+    submitting.value = false;
+  }
+};
   
   const goBack = () => {
     router.back();
