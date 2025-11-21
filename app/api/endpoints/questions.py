@@ -68,13 +68,13 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
                 shutil.copyfileobj(image_file.file, buffer)
             
             # 保存相对路径到数据库
-            image_url_to_save = f"/{file_path}"
+            image_url_to_save = f"/{file_path}".replace("\\", "/")
         finally:
             image_file.file.close()
 
     # 4. 调用 CRUD 函数创建题目
     # 注意：我们将 image_url 覆盖到 Pydantic 模型中
-    question_in.image_url = image_url_to_save.replace("\\", "/")
+    question_in.image_url = image_url_to_save
     
     question = crud_question.create_with_options(
         db=db, obj_in=question_in, procedure_id=procedure_id
