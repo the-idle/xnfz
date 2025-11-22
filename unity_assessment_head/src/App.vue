@@ -1,10 +1,17 @@
 <template>
-  <!-- 路由出口：所有页面都会渲染在这里 -->
-  <router-view />
+  <!-- 使用 ElConfigProvider 包裹路由出口，并绑定中文语言包 -->
+  <el-config-provider :locale="locale">
+    <router-view />
+  </el-config-provider>
 </template>
 
 <script setup lang="ts">
-// 这里是根组件，通常不需要写太多逻辑
+import { ref } from 'vue'
+import { ElConfigProvider } from 'element-plus'
+// 引入中文语言包
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+
+const locale = ref(zhCn)
 </script>
 
 <style>
