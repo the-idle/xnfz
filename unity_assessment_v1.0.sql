@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 80012
 File Encoding         : 65001
 
-Date: 2025-11-22 07:56:11
+Date: 2025-11-23 22:39:10
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -31,11 +31,21 @@ CREATE TABLE `answer_logs` (
   KEY `ix_answer_logs_question_id` (`question_id`),
   CONSTRAINT `fk_logs_question` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`),
   CONSTRAINT `fk_logs_result` FOREIGN KEY (`result_id`) REFERENCES `assessment_results` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of answer_logs
 -- ----------------------------
+INSERT INTO `answer_logs` VALUES ('1', '1', '37', '[115]', '0');
+INSERT INTO `answer_logs` VALUES ('2', '2', '1', '[1]', '5');
+INSERT INTO `answer_logs` VALUES ('3', '2', '2', '[3]', '2');
+INSERT INTO `answer_logs` VALUES ('4', '2', '3', '[6]', '5');
+INSERT INTO `answer_logs` VALUES ('5', '2', '4', '[9]', '5');
+INSERT INTO `answer_logs` VALUES ('6', '2', '39', '[119]', '5');
+INSERT INTO `answer_logs` VALUES ('7', '3', '1', '[1]', '5');
+INSERT INTO `answer_logs` VALUES ('8', '3', '2', '[2]', '0');
+INSERT INTO `answer_logs` VALUES ('9', '3', '3', '[5]', '0');
+INSERT INTO `answer_logs` VALUES ('10', '3', '4', '[10]', '0');
 
 -- ----------------------------
 -- Table structure for assessments
@@ -50,11 +60,12 @@ CREATE TABLE `assessments` (
   PRIMARY KEY (`id`),
   KEY `ix_assessments_question_bank_id` (`question_bank_id`),
   CONSTRAINT `fk_assessments_question_bank` FOREIGN KEY (`question_bank_id`) REFERENCES `question_banks` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of assessments
 -- ----------------------------
+INSERT INTO `assessments` VALUES ('1', '2025第四季度安全考核', '2025-11-22 00:00:00', '2025-11-24 00:00:00', '1');
 
 -- ----------------------------
 -- Table structure for assessment_results
@@ -72,11 +83,14 @@ CREATE TABLE `assessment_results` (
   KEY `ix_assessment_results_examinee_id` (`examinee_id`),
   CONSTRAINT `fk_results_assessment` FOREIGN KEY (`assessment_id`) REFERENCES `assessments` (`id`),
   CONSTRAINT `fk_results_examinee` FOREIGN KEY (`examinee_id`) REFERENCES `examinees` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of assessment_results
 -- ----------------------------
+INSERT INTO `assessment_results` VALUES ('1', '1', '1', '0', '2025-11-22 01:21:45', '2025-11-22 01:21:58');
+INSERT INTO `assessment_results` VALUES ('2', '1', '2', '22', '2025-11-23 02:03:49', '2025-11-23 02:13:45');
+INSERT INTO `assessment_results` VALUES ('3', '1', '3', '5', '2025-11-23 02:15:15', null);
 
 -- ----------------------------
 -- Table structure for examinees
@@ -87,11 +101,14 @@ CREATE TABLE `examinees` (
   `identifier` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '考生唯一标识(如工号、座位号)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_examinees_identifier` (`identifier`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of examinees
 -- ----------------------------
+INSERT INTO `examinees` VALUES ('2', 'LAPTOP-JLFS5U6M');
+INSERT INTO `examinees` VALUES ('3', 'LAPTOP-JLFS5U6M1');
+INSERT INTO `examinees` VALUES ('1', 'WebTester_01');
 
 -- ----------------------------
 -- Table structure for options
@@ -105,7 +122,7 @@ CREATE TABLE `options` (
   PRIMARY KEY (`id`),
   KEY `ix_options_question_id` (`question_id`),
   CONSTRAINT `fk_options_question` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=119 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=120 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of options
@@ -226,8 +243,7 @@ INSERT INTO `options` VALUES ('113', '37', '补充缺失的物料标识牌，对
 INSERT INTO `options` VALUES ('114', '37', '记录标识不全的物料，打电话通知物流人员补贴标识牌。', '0');
 INSERT INTO `options` VALUES ('115', '37', '补充缺失的物料标识牌，对责任人进行绩效考核。', '0');
 INSERT INTO `options` VALUES ('116', '37', '调查物料标识牌缺失原因，对责任人进行教育。', '0');
-INSERT INTO `options` VALUES ('117', '38', '已完成，结束任务', '1');
-INSERT INTO `options` VALUES ('118', '38', '未完成，继续任务', '0');
+INSERT INTO `options` VALUES ('119', '39', '321', '1');
 
 -- ----------------------------
 -- Table structure for platforms
@@ -245,7 +261,7 @@ CREATE TABLE `platforms` (
 -- ----------------------------
 -- Records of platforms
 -- ----------------------------
-INSERT INTO `platforms` VALUES ('1', '虚拟实训考核平台1.0', '用于班组长现场管理虚拟仿真考核', null);
+INSERT INTO `platforms` VALUES ('1', '虚拟实训考核平台1.0', '用于班组长现场管理虚拟仿真考核', '$2b$12$om92DDNFQi5vpF4PXJg0I.1FLvF5XoteBnPB2tSW4V/0qaApCOIQ2');
 
 -- ----------------------------
 -- Table structure for procedures
@@ -263,20 +279,19 @@ CREATE TABLE `procedures` (
 -- ----------------------------
 -- Records of procedures
 -- ----------------------------
-INSERT INTO `procedures` VALUES ('1', '班组园地（开始任务）', '1');
-INSERT INTO `procedures` VALUES ('2', '工序一', '1');
-INSERT INTO `procedures` VALUES ('3', '工序二', '1');
-INSERT INTO `procedures` VALUES ('4', '工序三', '1');
-INSERT INTO `procedures` VALUES ('5', '工序四', '1');
-INSERT INTO `procedures` VALUES ('6', '工序五', '1');
-INSERT INTO `procedures` VALUES ('7', '工序六', '1');
-INSERT INTO `procedures` VALUES ('8', '工序七', '1');
-INSERT INTO `procedures` VALUES ('9', '工序八', '1');
+INSERT INTO `procedures` VALUES ('1', '班组园地', '1');
+INSERT INTO `procedures` VALUES ('2', 'Area01', '1');
+INSERT INTO `procedures` VALUES ('3', 'Area02', '1');
+INSERT INTO `procedures` VALUES ('4', 'Area03', '1');
+INSERT INTO `procedures` VALUES ('5', 'Area04', '1');
+INSERT INTO `procedures` VALUES ('6', 'Area05', '1');
+INSERT INTO `procedures` VALUES ('7', 'Area06', '1');
+INSERT INTO `procedures` VALUES ('8', 'Area07', '1');
+INSERT INTO `procedures` VALUES ('9', 'Area08', '1');
 INSERT INTO `procedures` VALUES ('10', '灭火器检查场景', '1');
 INSERT INTO `procedures` VALUES ('11', '工序间零件传递场景', '1');
 INSERT INTO `procedures` VALUES ('12', '成品区场景', '1');
 INSERT INTO `procedures` VALUES ('13', '物料区场景', '1');
-INSERT INTO `procedures` VALUES ('14', '班组园地（结束任务）', '1');
 
 -- ----------------------------
 -- Table structure for questions
@@ -293,7 +308,7 @@ CREATE TABLE `questions` (
   PRIMARY KEY (`id`),
   KEY `ix_questions_procedure_id` (`procedure_id`),
   CONSTRAINT `fk_questions_procedure` FOREIGN KEY (`procedure_id`) REFERENCES `procedures` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of questions
@@ -335,7 +350,7 @@ INSERT INTO `questions` VALUES ('34', '12', '你该如何处理这个问题？',
 INSERT INTO `questions` VALUES ('35', '13', '物料区物料标识是否存在问题？', '/assets/images/场景/物料区标识.jpg', 'SINGLE_CHOICE', null, '2');
 INSERT INTO `questions` VALUES ('36', '13', '你发现了什么问题？', null, 'SINGLE_CHOICE', null, '5');
 INSERT INTO `questions` VALUES ('37', '13', '你该如何处理这个问题？', null, 'SINGLE_CHOICE', null, '5');
-INSERT INTO `questions` VALUES ('38', '14', '现场管理巡查表放回', null, 'MULTIPLE_CHOICE', null, '5');
+INSERT INTO `questions` VALUES ('39', '1', '123', null, 'SINGLE_CHOICE', '', '5');
 
 -- ----------------------------
 -- Table structure for question_banks
@@ -366,9 +381,10 @@ CREATE TABLE `users` (
   `is_superuser` tinyint(1) DEFAULT '0' COMMENT '是否为超级管理员 (1:是, 0:否)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_users_username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES ('1', 'admin', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxwKc.60r.ww7k.e.P.Q.w.w.w.w', '1');
+INSERT INTO `users` VALUES ('1', 'admin', '$2b$12$e8wsNXgBV.WB06xJ.eV.quz8WVpxqHHe5VmgMpWOahluzMLA/eqru', '1');
+INSERT INTO `users` VALUES ('4', 'admin1', '$2b$12$XQZCpMVjVbOyn3HkxjXzH./KLjzJJMz3WcbZpyP41Ufk1Rg5KIUoG', '1');
