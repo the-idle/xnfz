@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 80012
 File Encoding         : 65001
 
-Date: 2025-11-23 22:39:10
+Date: 2025-11-23 23:00:14
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -122,7 +122,7 @@ CREATE TABLE `options` (
   PRIMARY KEY (`id`),
   KEY `ix_options_question_id` (`question_id`),
   CONSTRAINT `fk_options_question` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=120 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=134 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of options
@@ -244,6 +244,18 @@ INSERT INTO `options` VALUES ('114', '37', '记录标识不全的物料，打电
 INSERT INTO `options` VALUES ('115', '37', '补充缺失的物料标识牌，对责任人进行绩效考核。', '0');
 INSERT INTO `options` VALUES ('116', '37', '调查物料标识牌缺失原因，对责任人进行教育。', '0');
 INSERT INTO `options` VALUES ('119', '39', '321', '1');
+INSERT INTO `options` VALUES ('120', '40', '正常', '1');
+INSERT INTO `options` VALUES ('121', '40', '异常', '0');
+INSERT INTO `options` VALUES ('122', '41', '正常', '1');
+INSERT INTO `options` VALUES ('123', '41', '异常', '0');
+INSERT INTO `options` VALUES ('126', '43', '正常', '1');
+INSERT INTO `options` VALUES ('127', '43', '异常', '0');
+INSERT INTO `options` VALUES ('128', '42', '正常', '1');
+INSERT INTO `options` VALUES ('129', '42', '异常', '0');
+INSERT INTO `options` VALUES ('130', '44', '正常', '1');
+INSERT INTO `options` VALUES ('131', '44', '异常', '0');
+INSERT INTO `options` VALUES ('132', '45', '正常', '1');
+INSERT INTO `options` VALUES ('133', '45', '异常', '0');
 
 -- ----------------------------
 -- Table structure for platforms
@@ -274,24 +286,30 @@ CREATE TABLE `procedures` (
   PRIMARY KEY (`id`),
   KEY `ix_procedures_question_bank_id` (`question_bank_id`),
   CONSTRAINT `fk_procedures_question_bank` FOREIGN KEY (`question_bank_id`) REFERENCES `question_banks` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of procedures
 -- ----------------------------
 INSERT INTO `procedures` VALUES ('1', '班组园地', '1');
-INSERT INTO `procedures` VALUES ('2', 'Area01', '1');
-INSERT INTO `procedures` VALUES ('3', 'Area02', '1');
-INSERT INTO `procedures` VALUES ('4', 'Area03', '1');
-INSERT INTO `procedures` VALUES ('5', 'Area04', '1');
-INSERT INTO `procedures` VALUES ('6', 'Area05', '1');
-INSERT INTO `procedures` VALUES ('7', 'Area06', '1');
-INSERT INTO `procedures` VALUES ('8', 'Area07', '1');
-INSERT INTO `procedures` VALUES ('9', 'Area08', '1');
+INSERT INTO `procedures` VALUES ('2', '工序1', '1');
+INSERT INTO `procedures` VALUES ('3', '工序2', '1');
+INSERT INTO `procedures` VALUES ('4', '工序3', '1');
+INSERT INTO `procedures` VALUES ('5', '工序4', '1');
+INSERT INTO `procedures` VALUES ('6', '工序5', '1');
+INSERT INTO `procedures` VALUES ('7', '工序6', '1');
+INSERT INTO `procedures` VALUES ('8', '工序7', '1');
+INSERT INTO `procedures` VALUES ('9', '工序8', '1');
 INSERT INTO `procedures` VALUES ('10', '灭火器检查场景', '1');
 INSERT INTO `procedures` VALUES ('11', '工序间零件传递场景', '1');
 INSERT INTO `procedures` VALUES ('12', '成品区场景', '1');
 INSERT INTO `procedures` VALUES ('13', '物料区场景', '1');
+INSERT INTO `procedures` VALUES ('15', '空任务1', '1');
+INSERT INTO `procedures` VALUES ('16', '空任务2', '1');
+INSERT INTO `procedures` VALUES ('17', '空任务3', '1');
+INSERT INTO `procedures` VALUES ('18', '空任务4', '1');
+INSERT INTO `procedures` VALUES ('19', '空任务5', '1');
+INSERT INTO `procedures` VALUES ('20', '空任务6', '1');
 
 -- ----------------------------
 -- Table structure for questions
@@ -308,7 +326,7 @@ CREATE TABLE `questions` (
   PRIMARY KEY (`id`),
   KEY `ix_questions_procedure_id` (`procedure_id`),
   CONSTRAINT `fk_questions_procedure` FOREIGN KEY (`procedure_id`) REFERENCES `procedures` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of questions
@@ -351,6 +369,12 @@ INSERT INTO `questions` VALUES ('35', '13', '物料区物料标识是否存在�
 INSERT INTO `questions` VALUES ('36', '13', '你发现了什么问题？', null, 'SINGLE_CHOICE', null, '5');
 INSERT INTO `questions` VALUES ('37', '13', '你该如何处理这个问题？', null, 'SINGLE_CHOICE', null, '5');
 INSERT INTO `questions` VALUES ('39', '1', '123', null, 'SINGLE_CHOICE', '', '5');
+INSERT INTO `questions` VALUES ('40', '15', '班长，有什么事吗？', null, 'DEDUCTION_SINGLE_CHOICE', '', '5');
+INSERT INTO `questions` VALUES ('41', '16', '班长，有什么事吗？', null, 'DEDUCTION_SINGLE_CHOICE', '', '5');
+INSERT INTO `questions` VALUES ('42', '17', '班长，有什么事吗？', null, 'DEDUCTION_SINGLE_CHOICE', '', '5');
+INSERT INTO `questions` VALUES ('43', '18', '班长，有什么事吗？', null, 'DEDUCTION_SINGLE_CHOICE', '', '5');
+INSERT INTO `questions` VALUES ('44', '19', '班长，有什么事吗？', null, 'DEDUCTION_SINGLE_CHOICE', '', '5');
+INSERT INTO `questions` VALUES ('45', '20', '班长，有什么事吗？', null, 'DEDUCTION_SINGLE_CHOICE', '', '5');
 
 -- ----------------------------
 -- Table structure for question_banks
