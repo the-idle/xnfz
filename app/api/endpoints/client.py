@@ -171,7 +171,15 @@ def finish_assessment(result_id: int, *, db: Session = Depends(deps.get_db), fin
     examinee = crud_examinee.get(db=db, id=result.examinee_id)
     if not examinee or examinee.identifier != finish_request.examinee_identifier: raise HTTPException(status_code=403, detail="考生标识符不匹配。")
 
-    if result.end_time: raise HTTPException(status_code=400, detail="考核已结束。无法重复结束。")
+    # --- 核心逻辑修改 ---
+    # 1. 检查考核是否已经结束
+    if result.end_time:
+        # 如果已结束，不再抛出异常，而是返回一个带有分数的“重复提交”响应
+        return UnifiedResponse(
+            code=208, # 208 Already Reported 是一个语义上很贴切的状态码
+            msg="考核已提交，请勿重复操作。",
+            data={"status": "finished", "final_score": result.total_score}
+        )
         
     result.end_time = datetime.utcnow()
     db.add(result); db.commit()
