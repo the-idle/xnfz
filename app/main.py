@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from app.models import user_management
 from app.models import question_management
 from app.models import assessment_management
+from app.core.scheduler import scheduler
 
 # 3. 创建 FastAPI 应用实例
 app = FastAPI(
@@ -51,6 +52,17 @@ def health_check():
     """
     return {"status": "ok", "app_name": settings.APP_NAME}
 
+@app.on_event("startup")
+def startup_event():
+    # --- 新增：启动调度器 ---
+    scheduler.start()
+    print("APScheduler started...")
+
+@app.on_event("shutdown")
+def shutdown_event():
+    # --- 新增：关闭调度器 ---
+    scheduler.shutdown()
+    print("APScheduler shut down...")
 # 6. 将您的主 API 路由器包含进来，并添加统一的前缀
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

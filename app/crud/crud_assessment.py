@@ -17,35 +17,34 @@ class CRUDAssessment(CRUDBase[Assessment, AssessmentCreate, AssessmentUpdate]):
         在指定平台下，获取即将开始或正在进行的、最优先的考核。
         优先级：1. 正在进行的； 2. 即将开始且离现在最近的。
         """
-        now = datetime.utcnow()
+        now = datetime.now() # 获取当前的 naive 时间
         
         # 1. 找到该平台下的所有题库ID
         platform_banks = db.query(QuestionBank.id).filter(QuestionBank.platform_id == platform_id).all()
         if not platform_banks: return None
         platform_bank_ids = [b.id for b in platform_banks]
 
-        # 2. 查询所有未结束的考核
-        upcoming_or_active_assessments = (
+        assessments = (
             db.query(Assessment)
             .filter(
                 Assessment.question_bank_id.in_(platform_bank_ids),
-                Assessment.end_time > now # 核心条件：考核尚未结束
+                Assessment.end_time > now # 直接用 naive 时间比较
             )
-            .order_by(Assessment.start_time.asc()) # 按开始时间排序
+            .order_by(Assessment.start_time.asc())
             .all()
         )
         
-        if not upcoming_or_active_assessments:
+        if not assessments:
             return None
 
         # 3. 应用业务优先级逻辑
         # 优先返回已经开始的
-        for assessment in upcoming_or_active_assessments:
+        for assessment in assessments:
             if assessment.start_time <= now:
                 return assessment
         
         # 如果没有正在进行的，则返回第一个即将开始的
-        return upcoming_or_active_assessments[0]
+        return assessments[0]
 
 
     def check_time_conflict(

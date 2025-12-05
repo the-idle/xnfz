@@ -18,8 +18,10 @@ from app.models.assessment_management import AssessmentResult
 from app.schemas.examinee import BlueprintProcedure
 from app.schemas.response import UnifiedResponse # 导入统一响应模型
 from app.models.assessment_management import AnswerLog
-
-
+import pytz
+from app.core.scheduler import schedule_auto_submit
+# 定义北京时区
+BEIJING_TZ = pytz.timezone('Asia/Shanghai')
 
 router = APIRouter()
 
@@ -41,11 +43,15 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
     assessment = crud_assessment.get(db=db, id=assessment_id)
     if not assessment: raise HTTPException(status_code=404, detail="未找到指定的考核场次。")
 
-    now_utc = datetime.now(timezone.utc)
-    start_time_utc = assessment.start_time.replace(tzinfo=timezone.utc)
-    end_time_utc = assessment.end_time.replace(tzinfo=timezone.utc)
-    if now_utc < start_time_utc: raise HTTPException(status_code=403, detail="考核还未开始。")
-    if now_utc > end_time_utc: raise HTTPException(status_code=403, detail="考核已结束。")
+    # --- 核心修复：将当前时间转为北京时间进行比较 ---
+    now_beijing = datetime.now(BEIJING_TZ)
+
+    # 将数据库中的 naive datetime 视为北京时间，并使其“aware”
+    start_time_beijing = BEIJING_TZ.localize(assessment.start_time)
+    end_time_beijing = BEIJING_TZ.localize(assessment.end_time)
+
+    if now_beijing < start_time_beijing: raise HTTPException(status_code=403, detail="考核还未开始。")
+    if now_beijing > end_time_beijing: raise HTTPException(status_code=403, detail="考核已结束。")
 
     examinee = crud_examinee.get_or_create_by_identifier(db=db, identifier=start_request.examinee_identifier)
 
@@ -68,6 +74,17 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
         db.add(session); db.commit(); db.refresh(session)
         # (可选) 如果您有缓存逻辑，应该在这里为新会hs话触发
         # generate_and_cache_answer_map(db=db, session_id=session.id, question_bank_id=assessment.question_bank_id)
+
+        # 1. 获取考核的结束时间 (它已经被 Pydantic 转为 naive 北京时间)
+        assessment_end_time_naive = assessment.end_time
+        
+        # 2. 将其转换为带时区的 UTC 时间，以便调度器使用
+        beijing_tz = pytz.timezone('Asia/Shanghai')
+        end_time_utc = beijing_tz.localize(assessment_end_time_naive).astimezone(timezone.utc)
+
+        # 3. 调用任务分派员，设置一个在考核结束时间执行的“闹钟”
+        schedule_auto_submit(result_id=session.id, run_time=end_time_utc)
+        # --- 增强结束 ---
 
     # --- 2. 获取数据 (保持不变) ---
     full_blueprint = build_assessment_blueprint(db=db, question_bank_id=assessment.question_bank_id)
@@ -117,9 +134,9 @@ def submit_answer(result_id: int, *, db: Session = Depends(deps.get_db), answer_
 
     # --- 新增：提交答案时间校验 ---
     assessment = crud_assessment.get(db=db, id=result.assessment_id)
-    now_utc = datetime.now(timezone.utc)
-    end_time_utc = assessment.end_time.replace(tzinfo=timezone.utc)
-    if now_utc > end_time_utc: raise HTTPException(status_code=403, detail="考核已结束。无法提交答案。")
+    now_beijing = datetime.now(BEIJING_TZ)
+    end_time_beijing = BEIJING_TZ.localize(assessment.end_time)
+    if now_beijing > end_time_beijing: raise HTTPException(status_code=403, detail="考核已结束。无法提交答案。")
 
     examinee = crud_examinee.get(db=db, id=result.examinee_id)
     if not examinee or examinee.identifier != answer_in.examinee_identifier: raise HTTPException(status_code=403, detail="考生标识符不匹配。")

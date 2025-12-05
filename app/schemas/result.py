@@ -1,5 +1,5 @@
 # app/schemas/result.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List
 from typing import Optional
@@ -31,7 +31,7 @@ class AnswerLogDetail(BaseModel):
 
 class AssessmentResultDetail(BaseModel):
     id: int
-    total_score: int
+    total_score: Optional[int] = Field(0, description="总分")
     start_time: datetime
     end_time: Optional[datetime] = None
     examinee_identifier: str

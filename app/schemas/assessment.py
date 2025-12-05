@@ -4,7 +4,9 @@ from typing import List
 from datetime import datetime
 from typing import Optional
 from pydantic import Field
-
+import pytz 
+from datetime import timezone
+from pydantic import validator
 
 
 # --- Option Schemas ---
@@ -90,6 +92,18 @@ class AssessmentBase(BaseModel):
     start_time: datetime
     end_time: datetime
 
+    # --- 核心修改：只解析格式，不改时区，不减8小时 ---
+    @validator('start_time', 'end_time', pre=True)
+    def parse_datetime(cls, v):
+        if isinstance(v, str):
+            # 兼容 Element Plus 发送的 "YYYY-MM-DD HH:mm:ss" 格式
+            try:
+                return datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                # 兼容 ISO 格式
+                return datetime.fromisoformat(v.replace('Z', ''))
+        return v
+
 class AssessmentCreate(AssessmentBase):
     question_bank_id: int # <--- 核心修改
 
@@ -98,6 +112,17 @@ class AssessmentUpdate(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     question_bank_id: Optional[int] = None
+
+    # --- 核心修改：只解析格式，不改时区 ---
+    @validator('start_time', 'end_time', pre=True, always=True)
+    def parse_datetime_update(cls, v):
+        if v is None: return v
+        if isinstance(v, str):
+            try:
+                return datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                return datetime.fromisoformat(v.replace('Z', ''))
+        return v
 
 class Assessment(AssessmentBase):
     id: int
