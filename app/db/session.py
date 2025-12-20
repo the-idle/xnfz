@@ -14,7 +14,11 @@ engine = create_engine(
     url=settings.DATABASE_URL,
     # echo=True 在开发时很有用，它会打印出所有执行的 SQL 语句
     echo=True, # 建议在开发时开启
-    pool_pre_ping=True, # 检查连接有效性
+    pool_size=50,  # 增加常驻连接数
+    max_overflow=100,  # 增加最大溢出连接数
+    pool_pre_ping=True,  # 连接前先ping，确保连接有效
+    pool_recycle=3600,  # 1小时后回收连接，避免数据库连接超时
+    pool_timeout=30,  # 连接获取超时时间（秒）
 )
 
 # 创建一个可配置的 Session 类

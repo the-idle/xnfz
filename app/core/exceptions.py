@@ -43,7 +43,7 @@ async def business_exception_handler(request: Request, exc: BusinessException):
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
-        status_code=HTTP_200_OK,
+        status_code=status.HTTP_200_OK,
         content={
             "code": 422,
             "msg": "请求参数验证失败",
