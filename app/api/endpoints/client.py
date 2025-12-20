@@ -25,6 +25,19 @@ BEIJING_TZ = pytz.timezone('Asia/Shanghai')
 
 router = APIRouter()
 
+
+
+@router.get("/timestamp",response_model=UnifiedResponse)
+def get_timestamp():
+    """
+    获取当前服务器时间戳
+    """
+    now_beijing = datetime.now(BEIJING_TZ)
+    if not now_beijing:
+        raise HTTPException(status_code=404, detail="服务器时间获取失败")
+    return {"data": int(now_beijing.timestamp() * 1000)}
+
+
 @router.get("/platforms/{platform_id}/assessments/upcoming", response_model=UnifiedResponse[schemas.Assessment])
 def get_upcoming_assessment_for_platform(
     platform_id: int, # <--- 接收 platform_id

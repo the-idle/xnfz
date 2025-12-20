@@ -23,10 +23,6 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-origins = [
-    "http://localhost:5173", # 前端地址
-    "http://127.0.0.1:5173",
-]
 
 app.add_middleware(
     CORSMiddleware,
