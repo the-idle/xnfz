@@ -13,8 +13,8 @@ from app.schemas.response import UnifiedResponse
 from app.models.question_management import QuestionType
 
 router = APIRouter()
-
-@router.post("/", response_model=UnifiedResponse[schemas.Platform])
+# @router.post("/", response_model=UnifiedResponse[schemas.Platform])
+@router.post("/", response_model=UnifiedResponse[schemas.Procedure])
 def create_procedure_for_bank(
     question_bank_id: int,
     *,

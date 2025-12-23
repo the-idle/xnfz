@@ -66,7 +66,7 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
 
     examinee = crud_examinee.get_or_create_by_identifier(db=db, identifier=start_request.examinee_identifier)
 
-        # --- 核心增强：前置检查 ---
+    # --- 核心增强：前置检查 ---
     # 1. 检查该考生是否已经完成过这场考核
     finished_session = crud_assessment_result.get_finished_session(
         db=db, assessment_id=assessment_id, examinee_id=examinee.id

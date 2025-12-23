@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from app.models import user_management
 from app.models import question_management
 from app.models import assessment_management
-from app.core.scheduler import scheduler
+from app.core.scheduler import scheduler, register_housekeeping_jobs
 
 # 3. 创建 FastAPI 应用实例
 app = FastAPI(
@@ -52,6 +52,8 @@ def health_check():
 def startup_event():
     # --- 新增：启动调度器 ---
     scheduler.start()
+    # 注册兜底扫描任务，防止遗漏自动交卷
+    register_housekeeping_jobs()
     print("APScheduler started...")
 
 @app.on_event("shutdown")

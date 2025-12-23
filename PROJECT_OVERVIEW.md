@@ -75,9 +75,17 @@ python initial_data.py
 默认创建 `admin / password` 用于 Swagger 授权。
 
 ### 6) 启动服务
+开发（热重载）：
 ```bash
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+生产 / 压测推荐（多 worker，缓解拒连）：
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+可按机器核数调整 `--workers`，并确保数据库/Redis 连接池参数与之匹配。
+
 Swagger UI: http://127.0.0.1:8000/docs
 
 ## 统一响应结构

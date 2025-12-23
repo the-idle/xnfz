@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List, Any
+import json
 from app import schemas
 from app.api import deps
 from app.models import user_management as user_models
@@ -66,7 +67,7 @@ def read_assessment_results(
 def read_single_assessment_result(
     result_id: int,
     db: Session = Depends(deps.get_db),
-    # current_user: user_models.User = Depends(deps.get_current_user)
+    current_user: user_models.User = Depends(deps.get_current_user)
 ):
     """
     根据ID获取单次考核详情 (详情视图，包含题目信息)
