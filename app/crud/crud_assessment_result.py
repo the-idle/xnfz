@@ -1,12 +1,14 @@
 # app/crud/crud_assessment_result.py
 import json
+from datetime import datetime
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.crud.base import CRUDBase
 from app.models.assessment_management import AssessmentResult, AnswerLog, Assessment
 from app.models.question_management import Question, QuestionBank, Procedure
 from app.schemas.examinee import BaseModel # 仅用于类型提示
-from typing import List
+from typing import List, Tuple
 from typing import Dict
 from sqlalchemy.orm import selectinload
 
@@ -22,6 +24,39 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
             AssessmentResult.examinee_id == examinee_id,
             AssessmentResult.end_time == None
         ).first()
+
+    def get_or_create_active_session(
+        self, db: Session, *, assessment_id: int, examinee_id: int
+    ) -> Tuple[AssessmentResult, bool]:
+        """
+        获取或创建活跃会话，处理并发竞态条件。
+        返回: (session, is_new) - session 对象和是否是新创建的标志
+        """
+        # 1. 先尝试获取已存在的会话
+        session = self.get_active_session(db=db, assessment_id=assessment_id, examinee_id=examinee_id)
+        if session:
+            return session, False
+
+        # 2. 不存在则尝试创建，使用异常捕获处理并发
+        try:
+            session = AssessmentResult(
+                assessment_id=assessment_id,
+                examinee_id=examinee_id,
+                start_time=datetime.utcnow()
+            )
+            db.add(session)
+            db.flush()  # 先 flush 检测冲突
+            db.commit()
+            db.refresh(session)
+            return session, True
+        except IntegrityError:
+            # 3. 并发冲突：另一个线程已创建，回滚后重新查询
+            db.rollback()
+            session = self.get_active_session(db=db, assessment_id=assessment_id, examinee_id=examinee_id)
+            if session:
+                return session, False
+            # 极端情况：如果还是查不到，抛出异常
+            raise ValueError(f"无法获取或创建考核会话: assessment={assessment_id}, examinee={examinee_id}")
 
     def get_answered_question_ids(self, db: Session, *, result_id: int) -> List[int]:
         """

@@ -14,10 +14,8 @@ from app.core.security import verify_password
 
 
 from app.crud.crud_blueprint import build_assessment_blueprint
-from app.models.assessment_management import AssessmentResult
 from app.schemas.examinee import BlueprintProcedure
 from app.schemas.response import UnifiedResponse # 导入统一响应模型
-from app.models.assessment_management import AnswerLog
 import pytz
 from app.core.scheduler import schedule_auto_submit
 # 定义北京时区
@@ -79,25 +77,22 @@ def start_or_resume_assessment_session(assessment_id: int, *, db: Session = Depe
             detail="该考生已完成并提交了这场考核。"
         )
 
-    # --- 核心修复点 1: 创建新会话 ---
-    session = crud_assessment_result.get_active_session(db=db, assessment_id=assessment_id, examinee_id=examinee.id)
+    # --- 核心修复点 1: 使用并发安全的方法创建会话 ---
+    session, is_new_session = crud_assessment_result.get_or_create_active_session(
+        db=db, assessment_id=assessment_id, examinee_id=examinee.id
+    )
 
-    if not session:
-        session = AssessmentResult(assessment_id=assessment_id, examinee_id=examinee.id, start_time=datetime.utcnow())
-        db.add(session); db.commit(); db.refresh(session)
-        # (可选) 如果您有缓存逻辑，应该在这里为新会hs话触发
-        # generate_and_cache_answer_map(db=db, session_id=session.id, question_bank_id=assessment.question_bank_id)
-
+    # 只有新创建的会话才需要设置定时任务
+    if is_new_session:
         # 1. 获取考核的结束时间 (它已经被 Pydantic 转为 naive 北京时间)
         assessment_end_time_naive = assessment.end_time
-        
+
         # 2. 将其转换为带时区的 UTC 时间，以便调度器使用
         beijing_tz = pytz.timezone('Asia/Shanghai')
         end_time_utc = beijing_tz.localize(assessment_end_time_naive).astimezone(timezone.utc)
 
-        # 3. 调用任务分派员，设置一个在考核结束时间执行的“闹钟”
+        # 3. 调用任务分派员，设置一个在考核结束时间执行的"闹钟"
         schedule_auto_submit(result_id=session.id, run_time=end_time_utc)
-        # --- 增强结束 ---
 
     # --- 2. 获取数据 (保持不变) ---
     full_blueprint = build_assessment_blueprint(db=db, question_bank_id=assessment.question_bank_id)

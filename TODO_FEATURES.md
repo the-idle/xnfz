@@ -49,6 +49,51 @@ CONSTRAINT `fk_logs_question` FOREIGN KEY (`question_id`) REFERENCES `questions`
 
 ---
 
+### 4. 接口压测问题优化 [已优化]
+
+#### 问题1：数据库连接池资源不足
+```
+sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached,
+connection timed out, timeout 30.00
+```
+
+**解决方案**：优化连接池配置
+
+**修改文件**：
+- `app/db/session.py` - 优化连接池参数
+  - `pool_size=30` - 常驻连接数
+  - `max_overflow=70` - 最大溢出连接数
+  - `pool_timeout=10` - 缩短超时时间，快速失败
+  - `pool_use_lifo=True` - 后进先出，减少空闲连接超时
+  - `pool_recycle=1800` - 30分钟回收连接
+  - `expire_on_commit=False` - 减少不必要的刷新查询
+  - `echo=False` - 关闭SQL日志减少开销
+
+---
+
+#### 问题2：并发重复插入
+```
+sqlalchemy.exc.IntegrityError: (1062, "Duplicate entry 'user318117' for key
+'ix_examinees_identifier'")
+```
+
+**原因**：`get_or_create_by_identifier` 存在竞态条件（Race Condition）
+- 线程 A 查询不存在 → 线程 B 查询不存在 → 线程 A 插入成功 → 线程 B 插入失败
+
+**解决方案**：使用异常捕获处理并发冲突
+
+**修改文件**：
+- `app/crud/crud_examinee.py` - 重写 `get_or_create_by_identifier()` 方法
+  - 使用 `try/except IntegrityError` 捕获唯一键冲突
+  - 冲突后回滚并重新查询
+
+- `app/crud/crud_assessment_result.py` - 添加 `get_or_create_active_session()` 方法
+  - 同样使用异常捕获处理会话创建的并发冲突
+
+- `app/api/endpoints/client.py` - 使用新的并发安全方法
+
+---
+
 ## 待实现功能
 
 ### 1. 密码查看功能（暂缓）
@@ -81,22 +126,6 @@ CONSTRAINT `fk_logs_question` FOREIGN KEY (`question_id`) REFERENCES `questions`
 - 前端：
   - `unity_assessment_head/src/views/UserList.vue`
   - `unity_assessment_head/src/views/PlatformList.vue`
-
----
-
-## 接口压测问题记录
-
-### 问题1：数据库连接池资源不足
-```
-sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached,
-connection timed out, timeout 30.00
-```
-
-### 问题2：并发重复插入
-```
-sqlalchemy.exc.IntegrityError: (1062, "Duplicate entry 'user318117' for key
-'ix_examinees_identifier'")
-```
 
 ---
 
