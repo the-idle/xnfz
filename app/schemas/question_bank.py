@@ -15,6 +15,7 @@ class QuestionBankUpdate(QuestionBankBase):
 class QuestionBank(QuestionBankBase):
     id: int
     platform_id: int
+    total_score: Optional[int] = Field(None, description="题库总分（所有题目分数之和）")
 
     class Config:
         from_attributes = True

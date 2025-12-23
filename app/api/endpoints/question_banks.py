@@ -61,11 +61,23 @@ def read_question_banks_for_platform(
     platform = crud_platform.get(db=db, id=platform_id)
     if not platform:
         raise HTTPException(status_code=404, detail="未找到指定的考核平台。")
-    
+
     # crud_question_bank 实例没有 get_multi_by_platform 方法，需要我们自己实现
     # 这里我们暂时使用 platform 的关系属性来获取
     question_banks = crud_question_bank.get_multi_by_platform(db=db, platform_id=platform_id, skip=skip, limit=limit)
-    return {"data": question_banks}
+
+    # 计算每个题库的总分
+    result = []
+    for bank in question_banks:
+        total_score = crud_question_bank.get_total_score(db=db, question_bank_id=bank.id)
+        result.append(schemas.QuestionBank(
+            id=bank.id,
+            name=bank.name,
+            platform_id=bank.platform_id,
+            total_score=total_score
+        ))
+
+    return {"data": result}
 
 @router.get("/{question_bank_id}", response_model=UnifiedResponse[schemas.QuestionBank])
 def read_question_bank(

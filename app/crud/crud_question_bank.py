@@ -1,11 +1,24 @@
 # app/crud/crud_question_bank.py
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from app.models.question_management import QuestionBank, Platform
+from app.models.question_management import QuestionBank, Platform, Procedure, Question
 from app.schemas.question_bank import QuestionBankCreate, QuestionBankUpdate
 from .base import CRUDBase
 
 class CRUDQuestionBank(CRUDBase[QuestionBank, QuestionBankCreate, QuestionBankUpdate]):
+
+    def get_total_score(self, db: Session, *, question_bank_id: int) -> int:
+        """
+        计算题库的总分（所有题目分数之和）
+        """
+        result = db.query(func.sum(Question.score)).join(
+            Procedure, Question.procedure_id == Procedure.id
+        ).filter(
+            Procedure.question_bank_id == question_bank_id
+        ).scalar()
+        return result or 0
+
     def create_with_platform(
         self, db: Session, *, obj_in: QuestionBankCreate, platform_id: int
     ) -> QuestionBank:

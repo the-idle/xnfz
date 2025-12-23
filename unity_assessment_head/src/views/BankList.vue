@@ -13,6 +13,11 @@
     <el-table :data="list" border style="margin-top: 20px;">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" label="题库名称" />
+      <el-table-column prop="total_score" label="总分" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag type="primary">{{ row.total_score ?? 0 }} 分</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="250">
         <template #default="{ row }">
           <el-button size="small" type="success" @click="enterProcedure(row.id)">管理工序</el-button>
