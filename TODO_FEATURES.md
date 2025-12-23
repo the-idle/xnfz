@@ -94,6 +94,40 @@ sqlalchemy.exc.IntegrityError: (1062, "Duplicate entry 'user318117' for key
 
 ---
 
+### 5. Redis 缓存系统 [已实现]
+
+**需求**：引入 Redis 缓存，提升高并发场景下的响应速度
+
+**实现方案**：
+- 使用 Redis 缓存题库蓝图数据（最耗时的查询）
+- 支持降级到内存缓存（Redis 不可用时）
+- 数据变更时自动使缓存失效
+
+**缓存策略**：
+- 题库蓝图缓存：TTL 1小时
+- 考核信息缓存：TTL 5分钟
+- 缓存键前缀：`blueprint:`, `assessment:`
+
+**配置参数**（可在 `.env` 中设置）：
+```
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
+REDIS_ENABLED=true
+CACHE_TTL_BLUEPRINT=3600
+CACHE_TTL_ASSESSMENT=300
+```
+
+**修改文件**：
+- `app/core/config.py` - 添加 Redis 配置参数
+- `app/core/cache.py` - 新增缓存服务模块（Redis + 内存降级）
+- `app/crud/crud_blueprint.py` - 集成缓存，添加 `invalidate_blueprint_cache()` 方法
+- `app/api/endpoints/procedures.py` - 工序增删改时使缓存失效
+- `app/api/endpoints/questions.py` - 题目增删改时使缓存失效
+
+---
+
 ## 待实现功能
 
 ### 1. 密码查看功能（暂缓）

@@ -7,6 +7,7 @@ from app.api import deps
 from app.models import user_management as user_models
 from app.crud.crud_question import crud_question
 from app.crud.crud_procedure import crud_procedure
+from app.crud.crud_blueprint import invalidate_blueprint_cache
 from app.schemas.response import UnifiedResponse
 from fastapi import Form, File, UploadFile
 from pathlib import Path
@@ -37,7 +38,7 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
 ):
     """
     为指定工序/点位创建一个新的题目（包含选项和可选的图片）。
-    
+
     - **question_data**: 一个 JSON 字符串，其结构必须符合 QuestionCreate schema。
     - **image_file**: (可选) 一个图片文件。
     """
@@ -54,7 +55,7 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
         raise BusinessException(code=422, msg=msg)
     except json.JSONDecodeError:
         raise BusinessException(code=400, msg="question_data 字段必须为有效的 JSON 字符串。")
-        
+
     # 2. 检查父级工序和 scene_identifier 是否重复 (逻辑不变)
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
@@ -73,12 +74,12 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
     if image_file:
         if image_file.content_type not in ["image/jpeg", "image/png", "image/gif"]:
             raise HTTPException(status_code=400, detail="无效的图片类型。")
-        
+
         try:
             file_path = UPLOAD_DIR / f"{datetime.utcnow().timestamp()}_{image_file.filename}"
             with file_path.open("wb") as buffer:
                 shutil.copyfileobj(image_file.file, buffer)
-            
+
             # 保存相对路径到数据库
             image_url_to_save = f"/{file_path}".replace("\\", "/")
         finally:
@@ -87,10 +88,15 @@ def create_question_with_optional_image( # <--- 函数名可以更通用
     # 4. 调用 CRUD 函数创建题目
     # 注意：我们将 image_url 覆盖到 Pydantic 模型中
     question_in.image_url = image_url_to_save
-    
+
     question = crud_question.create_with_options(
         db=db, obj_in=question_in, procedure_id=procedure_id
     )
+
+    # 5. 使缓存失效
+    if procedure.question_bank_id:
+        invalidate_blueprint_cache(procedure.question_bank_id)
+
     return {"data": question}
 
 @router.get("/", response_model=UnifiedResponse[List[schemas.Question]])
@@ -102,7 +108,7 @@ def read_questions(
     current_user: user_models.User = Depends(deps.get_current_user)
 ):
     """
-    根据工序/点位 ID 分页获取题目列表。 
+    根据工序/点位 ID 分页获取题目列表。
     """
     questions = crud_question.get_multi_by_procedure(db=db, procedure_id=procedure_id, skip=skip, limit=limit)
     return {"data": questions}
@@ -123,6 +129,7 @@ def read_question(
 
 @router.put("/{question_id}", response_model=UnifiedResponse[schemas.Question])
 def update_question(
+    procedure_id: int,
     question_id: int,
     *,
     db: Session = Depends(deps.get_db),
@@ -155,14 +162,20 @@ def update_question(
             image_file.file.close()
 
     question_in.image_url = image_url_to_save
-    
+
     # 3. 调用 CRUD
     updated_question = crud_question.update(db=db, db_obj=question, obj_in=question_in)
-    
+
+    # 4. 使缓存失效
+    procedure = crud_procedure.get(db=db, id=procedure_id)
+    if procedure and procedure.question_bank_id:
+        invalidate_blueprint_cache(procedure.question_bank_id)
+
     return {"data": updated_question}
 
 @router.delete("/{question_id}", response_model=UnifiedResponse[schemas.Question])
 def delete_question(
+    procedure_id: int,
     question_id: int,
     db: Session = Depends(deps.get_db),
     current_user: user_models.User = Depends(deps.get_current_user)
@@ -173,6 +186,15 @@ def delete_question(
     question = crud_question.get(db=db, id=question_id)
     if not question:
         raise HTTPException(status_code=404, detail="未找到指定的题目。")
+
+    # 先获取 procedure 以便删除后使缓存失效
+    procedure = crud_procedure.get(db=db, id=procedure_id)
+
     removed_question = crud_question.remove(db=db, id=question_id)
+
+    # 使缓存失效
+    if procedure and procedure.question_bank_id:
+        invalidate_blueprint_cache(procedure.question_bank_id)
+
     return {"data": removed_question}
 

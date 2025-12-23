@@ -7,7 +7,8 @@ from app import schemas
 from app.api import deps
 from app.models import user_management as user_models
 from app.crud.crud_procedure import crud_procedure
-from app.crud.crud_question_bank import crud_question_bank 
+from app.crud.crud_question_bank import crud_question_bank
+from app.crud.crud_blueprint import invalidate_blueprint_cache
 from app.schemas.response import UnifiedResponse
 from app.models.question_management import QuestionType
 
@@ -27,8 +28,10 @@ def create_procedure_for_bank(
     bank = crud_question_bank.get(db=db, id=question_bank_id)
     if not bank:
         raise HTTPException(status_code=404, detail="未找到指定的题库。")
-    
+
     procedure = crud_procedure.create_with_bank(db=db, obj_in=procedure_in, question_bank_id=question_bank_id)
+    # 使缓存失效
+    invalidate_blueprint_cache(question_bank_id)
     return {"data": procedure}
 
 # 您可以仿照此模式，轻松补全 get_multi, get, update, delete 接口
@@ -59,6 +62,7 @@ def read_procedure(
 # --- 核心修复：Update 接口 ---
 @router.put("/{procedure_id}", response_model=UnifiedResponse[schemas.Procedure])
 def update_procedure(
+    question_bank_id: int,
     procedure_id: int,
     *,
     db: Session = Depends(deps.get_db),
@@ -69,14 +73,17 @@ def update_procedure(
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
         raise HTTPException(status_code=404, detail="未找到指定的工序/点位。")
-    
+
     # 2. 再执行更新
     procedure = crud_procedure.update(db=db, db_obj=procedure, obj_in=procedure_in)
+    # 使缓存失效
+    invalidate_blueprint_cache(question_bank_id)
     return {"data": procedure}
 
 # --- 核心修复：Delete 接口 ---
 @router.delete("/{procedure_id}", response_model=UnifiedResponse[schemas.Procedure])
 def delete_procedure(
+    question_bank_id: int,
     procedure_id: int,
     db: Session = Depends(deps.get_db),
     current_user: user_models.User = Depends(deps.get_current_user)
@@ -85,7 +92,9 @@ def delete_procedure(
     procedure = crud_procedure.get(db=db, id=procedure_id)
     if not procedure:
         raise HTTPException(status_code=404, detail="未找到指定的工序/点位。")
-    
+
     # 2. 执行删除 (CRUDBase 的方法通常叫 remove)
     crud_procedure.remove(db=db, id=procedure_id)
+    # 使缓存失效
+    invalidate_blueprint_cache(question_bank_id)
     return {"data": procedure}
