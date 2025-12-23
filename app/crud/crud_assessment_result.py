@@ -69,6 +69,14 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
             .all()
         )
 
+    def get_count_by_assessment(self, db: Session, *, assessment_id: int) -> int:
+        """
+        获取某场考核下的成绩记录总数
+        """
+        return db.query(AssessmentResult).filter(
+            AssessmentResult.assessment_id == assessment_id
+        ).count()
+
     def get_answered_logs_map(self, db: Session, *, result_id: int) -> Dict[int, List[int]]:
         """
         获取某次考核会话中所有已回答题目的日志，并返回一个映射：

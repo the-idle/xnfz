@@ -7,14 +7,14 @@
           </template>
         </el-page-header>
       </div>
-  
+
       <el-empty v-if="!assessmentId" description="请先在「场次发布」页面选择一个考核查看成绩" />
-  
+
       <div v-else style="margin-top: 20px;">
         <el-table :data="sessionList" border style="width: 100%" v-loading="loading">
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="examinee_identifier" label="考生/设备标识" />
-          
+
           <el-table-column prop="total_score" label="得分" sortable width="120" align="center">
             <template #default="{ row }">
               <span :class="getScoreClass(row.total_score)" style="font-size: 16px;">
@@ -22,7 +22,7 @@
               </span>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="状态" width="120" align="center">
             <template #default="{ row }">
               <el-tag :type="row.end_time ? 'success' : 'warning'">
@@ -30,13 +30,13 @@
               </el-tag>
             </template>
           </el-table-column>
-  
+
           <el-table-column label="交卷时间">
             <template #default="{ row }">
               {{ row.end_time ? new Date(row.end_time).toLocaleString() : '-' }}
             </template>
           </el-table-column>
-          
+
           <el-table-column label="操作" width="150" align="center">
             <template #default="{ row }">
               <!-- 修复：启用了查看详情按钮 -->
@@ -46,48 +46,91 @@
             </template>
           </el-table-column>
         </el-table>
+
+        <!-- 分页组件 -->
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[20, 50, 100, 200]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
     </div>
   </template>
   
   <script setup lang="ts">
-  import { ref, onMounted } from 'vue';
-  import { useRoute, useRouter } from 'vue-router';
-  import request from '@/utils/request';
-  import type { AssessmentSession } from '@/types/api';
-  
-  const route = useRoute();
-  const router = useRouter();
-  const assessmentId = route.query.assessmentId;
-  const loading = ref(false);
-  const sessionList = ref<AssessmentSession[]>([]);
-  
-  const fetchResults = async () => {
-    if (!assessmentId) return;
-    loading.value = true;
-    try {
-      const res = await request.get<any, AssessmentSession[]>(`/admin/assessments/${assessmentId}/results/`);
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import request from '@/utils/request';
+import type { AssessmentSession } from '@/types/api';
+
+const route = useRoute();
+const router = useRouter();
+const assessmentId = route.query.assessmentId;
+const loading = ref(false);
+const sessionList = ref<AssessmentSession[]>([]);
+
+// 分页相关
+const currentPage = ref(1);
+const pageSize = ref(50);
+const total = ref(0);
+
+const fetchResults = async () => {
+  if (!assessmentId) return;
+  loading.value = true;
+  try {
+    const skip = (currentPage.value - 1) * pageSize.value;
+    const res = await request.get<any, { items: AssessmentSession[], total: number }>(
+      `/admin/assessments/${assessmentId}/results/`,
+      { params: { skip, limit: pageSize.value } }
+    );
+    // 兼容两种响应格式
+    if (Array.isArray(res)) {
+      sessionList.value = res;
+      total.value = res.length;
+    } else if (res && res.items) {
+      sessionList.value = res.items;
+      total.value = res.total;
+    } else {
       sessionList.value = res || [];
-    } catch (error) {
-      console.error(error);
-    } finally {
-      loading.value = false;
+      total.value = sessionList.value.length;
     }
-  };
-  
-  const viewDetail = (sessionId: number) => {
-    // 跳转到详情页
-    router.push(`/sessions/${sessionId}`);
-  };
-  
-  const getScoreClass = (score: number) => {
-    if (score >= 90) return 'text-success';
-    if (score < 60) return 'text-danger';
-    return 'text-warning';
-  };
-  
-  onMounted(fetchResults);
-  </script>
+  } catch (error) {
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val;
+  currentPage.value = 1;
+  fetchResults();
+};
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val;
+  fetchResults();
+};
+
+const viewDetail = (sessionId: number) => {
+  // 跳转到详情页
+  router.push(`/sessions/${sessionId}`);
+};
+
+const getScoreClass = (score: number) => {
+  if (score >= 90) return 'text-success';
+  if (score < 60) return 'text-danger';
+  return 'text-warning';
+};
+
+onMounted(fetchResults);
+</script>
   
   <style scoped>
   .text-success { color: #67C23A; font-weight: bold; }

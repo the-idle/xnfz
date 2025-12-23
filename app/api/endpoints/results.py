@@ -1,7 +1,7 @@
 # app/api/endpoints/results.py
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Any
 from app import schemas
 from app.api import deps
 from app.models import user_management as user_models
@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get(
     "/assessments/{assessment_id}/results/",
-    response_model=UnifiedResponse[List[schemas.AssessmentResultDetail]]
+    response_model=UnifiedResponse[Any]
 )
 def read_assessment_results(
     assessment_id: int,
@@ -27,11 +27,16 @@ def read_assessment_results(
 ):
     """
     获取一场考核的所有考生成绩详情 (需要管理员权限)
+    支持分页：skip 和 limit 参数
     """
+    # 获取总数
+    total = crud_assessment_result.get_count_by_assessment(db=db, assessment_id=assessment_id)
+
+    # 获取分页数据
     results = crud_assessment_result.get_multi_by_assessment(
         db=db, assessment_id=assessment_id, skip=skip, limit=limit
     )
-    
+
     # 手动组装数据以匹配 AssessmentResultDetail schema
     detailed_results = []
     for res in results:
@@ -44,7 +49,14 @@ def read_assessment_results(
             "answer_logs": [] # 列表页不需要加载详细题目，留空以提升性能
         })
 
-    return {"code": 200, "msg": "success", "data": detailed_results}
+    return {
+        "code": 200,
+        "msg": "success",
+        "data": {
+            "items": detailed_results,
+            "total": total
+        }
+    }
 
 # 2. 获取详情接口 (修复点：确保路径是 /assessment-results/{result_id})
 @router.get(

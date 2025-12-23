@@ -34,6 +34,21 @@ CONSTRAINT `fk_logs_question` FOREIGN KEY (`question_id`) REFERENCES `questions`
 
 ---
 
+### 3. 成绩记录显示不完全 [已修复]
+
+**问题**：只显示了99条数据，数据库里面已经有1000条数据
+
+**原因**：后端 API 默认 `limit=100`，前端没有分页功能
+
+**解决方案**：为成绩记录页面添加分页功能
+
+**修改文件**：
+- `app/crud/crud_assessment_result.py` - 添加 `get_count_by_assessment()` 方法获取总数
+- `app/api/endpoints/results.py` - 修改 API 返回 `{ items, total }` 分页格式
+- `unity_assessment_head/src/views/SessionList.vue` - 添加 el-pagination 分页组件
+
+---
+
 ## 待实现功能
 
 ### 1. 密码查看功能（暂缓）
@@ -66,16 +81,6 @@ CONSTRAINT `fk_logs_question` FOREIGN KEY (`question_id`) REFERENCES `questions`
 - 前端：
   - `unity_assessment_head/src/views/UserList.vue`
   - `unity_assessment_head/src/views/PlatformList.vue`
-
----
-
-## 待修复 BUG
-
-### 1. 成绩记录显示不完全 [待修复]
-
-**问题**：只显示了99条数据，数据库里面已经有1000条数据
-
-**可能原因**：前端或后端有默认的分页限制（limit=100）
 
 ---
 
