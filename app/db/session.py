@@ -14,15 +14,26 @@ class Base(DeclarativeBase):
 # 针对高并发场景优化连接池配置
 engine = create_engine(
     url=settings.DATABASE_URL,
-    # echo=True 在开发时很有用，它会打印出所有执行的 SQL 语句
-    echo=False,  # 生产环境建议关闭，减少日志开销
+    echo=False,
     poolclass=QueuePool,
-    pool_size=30,  # 常驻连接数，根据 MySQL max_connections 调整
-    max_overflow=70,  # 最大溢出连接数，pool_size + max_overflow = 100
-    pool_pre_ping=True,  # 连接前先 ping，确保连接有效
-    pool_recycle=1800,  # 30分钟后回收连接，避免 MySQL wait_timeout 断开
-    pool_timeout=10,  # 获取连接超时时间（秒），超时抛异常而非无限等待
-    pool_use_lifo=True,  # 后进先出，优先使用最近归还的连接，减少空闲连接超时
+
+    # 针对 1000 线程的配置
+    pool_size=100,  # 大幅增加常驻连接
+    max_overflow=400,  # 允许更多溢出连接
+    pool_pre_ping=True,
+    pool_recycle=300,  # 5分钟回收，更快释放连接
+    pool_timeout=3,  # 更短的超时时间
+    pool_use_lifo=False,  # 高并发下改为先进先出
+
+    # 添加连接参数
+    connect_args={
+        "connect_timeout": 2,
+        "read_timeout": 10,
+        "write_timeout": 10,
+    },
+
+    # 重要：增加连接池的线程安全性
+    pool_reset_on_return='rollback',
 )
 
 # 创建一个可配置的 Session 类
