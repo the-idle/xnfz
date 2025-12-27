@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.models.question_management import QuestionBank, Platform, Procedure, Question
+from app.models.question_management import QuestionBank, Platform, Procedure, Question, QuestionType
 from app.schemas.question_bank import QuestionBankCreate, QuestionBankUpdate
 from .base import CRUDBase
 
@@ -15,7 +15,8 @@ class CRUDQuestionBank(CRUDBase[QuestionBank, QuestionBankCreate, QuestionBankUp
         result = db.query(func.sum(Question.score)).join(
             Procedure, Question.procedure_id == Procedure.id
         ).filter(
-            Procedure.question_bank_id == question_bank_id
+            Procedure.question_bank_id == question_bank_id,
+            Question.question_type != QuestionType.DEDUCTION_SINGLE_CHOICE
         ).scalar()
         return result or 0
 
