@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <el-card class="login-card">
-      <template #header><h2>Unity考核系统登录</h2></template>
+      <template #header><h2>后台登录</h2></template>
       <el-form :model="form" label-position="top">
         <el-form-item label="用户名">
           <el-input v-model="form.username" placeholder="请输入用户名" />
