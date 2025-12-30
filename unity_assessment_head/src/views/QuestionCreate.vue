@@ -103,6 +103,7 @@
   import request from '@/utils/request';
   import { ElMessage } from 'element-plus';
   import { Plus, Delete } from '@element-plus/icons-vue';
+  import {API_BASE_URL} from "@/constants";
   
   const route = useRoute();
   const router = useRouter();
@@ -204,7 +205,7 @@
   const resolveImageUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    return `http://127.0.0.1:8000${url}`;
+    return `${API_BASE_URL}${url}`;
   };
   
   const submitQuestion = async () => {

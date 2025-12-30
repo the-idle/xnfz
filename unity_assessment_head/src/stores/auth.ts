@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import axios from 'axios';
 // 引入我们封装好的 request，而不是原生 axios，这样才能享受拦截器的红利！
 import request from '@/utils/request'; 
-
+import { API_BASE_URL } from '@/constants';
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '');
 
@@ -20,7 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
       
       // 为了处理特殊的登录格式，我们这里还是得用原生 axios 发一次请求，
       // 但要手动处理一下结果，保持和拦截器逻辑一致
-      const rawRes = await axios.post('http://127.0.0.1:8000/api/v1/login/token', params, {
+      const rawRes = await axios.post(`${API_BASE_URL}/api/v1/login/token`, params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
 

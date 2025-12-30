@@ -9,8 +9,11 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import constants, { API_BASE_URL, API_CONFIG } from './constants';
 
 const app = createApp(App)
+
+app.config.globalProperties.$constants = constants;
 
 // --- 2. 注册插件 ---
 app.use(createPinia())

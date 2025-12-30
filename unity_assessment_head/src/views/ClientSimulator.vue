@@ -190,6 +190,7 @@ import {
   User, UserFilled, Monitor, EditPen, Trophy, 
   Search, Back, CircleCheckFilled, Finished, Timer
 } from '@element-plus/icons-vue';
+import {API_BASE_URL} from "@/constants";
 
 const router = useRouter();
 const activeStep = ref(0);
@@ -435,7 +436,7 @@ const reset = () => {
 const resolveImageUrl = (url: string) => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://127.0.0.1:8000${url}`;
+  return `${API_BASE_URL}${url}`;
 };
 
 onUnmounted(() => {

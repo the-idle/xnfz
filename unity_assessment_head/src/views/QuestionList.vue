@@ -60,7 +60,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
-
+import { API_BASE_URL } from '@/constants';
 const route = useRoute();
 const router = useRouter();
 const procedureId = route.params.procedureId;
@@ -111,8 +111,7 @@ const getTypeColor = (type: string) => {
 const resolveImageUrl = (url: string) => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  const BASE_URL = 'http://127.0.0.1:8000'; 
-  return `${BASE_URL}${url}`;
+  return `${API_BASE_URL}${url}`;
 };
 
 

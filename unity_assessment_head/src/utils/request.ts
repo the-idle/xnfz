@@ -1,10 +1,11 @@
 import axios, { type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
-import router from '@/router'; // 建议引入路由实例，用来做无刷新跳转
+import router from '@/router';
+import {API_BASE_URL} from "@/constants"; // 建议引入路由实例，用来做无刷新跳转
 
 const service = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/v1',
+  baseURL: `${API_BASE_URL}/api/v1`,
   timeout: 5000,
 });
 
