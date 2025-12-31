@@ -182,14 +182,16 @@ def finish_assessment(result_id: int, *, db: Session = Depends(deps.get_db), fin
     # --- 核心逻辑修改 ---
     # 1. 检查考核是否已经结束
     if result.end_time:
-        # 如果已结束，不再抛出异常，而是返回一个带有分数的“重复提交”响应
+        # 如果已结束，不再抛出异常，而是返回一个带有分数的"重复提交"响应
         return UnifiedResponse(
             code=208, # 208 Already Reported 是一个语义上很贴切的状态码
             msg="考核已提交，请勿重复操作。",
             data={"status": "finished", "final_score": result.total_score}
         )
-        
-    result.end_time = datetime.utcnow()
+    
+    # 统一使用北京时间，并转换为naive datetime存储
+    now_beijing = datetime.now(BEIJING_TZ)
+    result.end_time = now_beijing.replace(tzinfo=None)  # 去掉时区信息，存储为naive datetime
     db.add(result); db.commit()
     return {"data": {"status": "finished", "final_score": result.total_score}}
 

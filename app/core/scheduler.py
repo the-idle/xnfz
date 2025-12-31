@@ -5,10 +5,14 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import logging
+import pytz
 
 from app.db.session import SessionLocal
 from app.models.assessment_management import AssessmentResult
 from app.core.config import settings
+
+# 定义北京时区
+BEIJING_TZ = pytz.timezone('Asia/Shanghai')
 
 # 配置日志
 logging.basicConfig()
@@ -49,8 +53,9 @@ def force_submit_assessment_session(result_id: int):
         ).first()
 
         if result:
-            # 如果找到了，就设置其结束时间
-            result.end_time = datetime.now(timezone.utc)
+            # 如果找到了，就设置其结束时间（统一使用北京时间）
+            now_beijing = datetime.now(BEIJING_TZ)
+            result.end_time = now_beijing.replace(tzinfo=None)  # 去掉时区信息，存储为naive datetime
             db.add(result)
             db.commit()
             logging.info(f"Force-submitted session_id: {result_id}")
@@ -89,7 +94,8 @@ def force_submit_expired_sessions(assessment_id: int = None):
     """
     db: Session = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        # 统一使用北京时间进行比较
+        now_beijing = datetime.now(BEIJING_TZ)
 
         # 查询所有已过期但未交卷的会话
         query = db.query(AssessmentResult).filter(
@@ -106,18 +112,17 @@ def force_submit_expired_sessions(assessment_id: int = None):
         for result in query.all():
             assessment = db.query(Assessment).filter(Assessment.id == result.assessment_id).first()
             if assessment:
-                # 将考核结束时间转为 UTC 比较
-                import pytz
-                beijing_tz = pytz.timezone('Asia/Shanghai')
-                end_time_utc = beijing_tz.localize(assessment.end_time).astimezone(timezone.utc)
+                # 考核结束时间已经是北京时间（naive datetime），直接比较
+                end_time_beijing = BEIJING_TZ.localize(assessment.end_time) if assessment.end_time.tzinfo is None else assessment.end_time
 
-                if now > end_time_utc:
+                if now_beijing > end_time_beijing:
                     expired_results.append(result)
 
-        # 批量更新
+        # 批量更新（统一使用北京时间）
         count = 0
         for result in expired_results:
-            result.end_time = datetime.now(timezone.utc)
+            now_beijing_naive = datetime.now(BEIJING_TZ).replace(tzinfo=None)  # 去掉时区信息，存储为naive datetime
+            result.end_time = now_beijing_naive
             db.add(result)
             count += 1
 

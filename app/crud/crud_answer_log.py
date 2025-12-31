@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Tuple
+import pytz
 
 from app.crud.base import CRUDBase
 from app.models.assessment_management import AnswerLog, AssessmentResult
@@ -10,6 +11,9 @@ from sqlalchemy.orm import joinedload
 
 from app.schemas.examinee import SubmitAnswerRequest
 from pydantic import BaseModel
+
+# 定义北京时区
+BEIJING_TZ = pytz.timezone('Asia/Shanghai')
 
 class CRUDAnswerLog(CRUDBase[AnswerLog, SubmitAnswerRequest, BaseModel]):
     def calculate_and_log_answer(
@@ -72,13 +76,14 @@ class CRUDAnswerLog(CRUDBase[AnswerLog, SubmitAnswerRequest, BaseModel]):
                 score_awarded = question.score
                 is_correct = True
 
-        # 4. 记录日志并提交
+        # 4. 记录日志并提交（统一使用北京时间）
+        now_beijing = datetime.now(BEIJING_TZ)
         db_log = AnswerLog(
             result_id=result.id,
             question_id=answer_in.question_id,
             selected_option_ids=answer_in.selected_option_ids,
             score_awarded=score_awarded,
-            answered_at=datetime.utcnow()
+            answered_at=now_beijing.replace(tzinfo=None)  # 去掉时区信息，存储为naive datetime
         )
         db.add(db_log)
         result.total_score = (result.total_score or 0) + score_awarded

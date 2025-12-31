@@ -5,7 +5,8 @@
       
       <!-- Logo 区域 (修复版：使用图标代替图片，防止报错) -->
       <div class="logo-container">
-        <el-icon class="logo-icon" :size="28"><Monitor /></el-icon>
+        <img src="/public/icon.png" alt="logo" class="logo-image">
+        <!-- <el-icon class="logo-icon" :size="28"><Monitor /></el-icon> -->
         <span class="logo-text">实训考核管理平台</span>
       </div>
 
@@ -138,5 +139,10 @@ const handleLogout = () => {
 .main-content { 
   background: #f0f2f5; 
   padding: 20px; 
+}
+.logo-image{
+  width: 40px;
+  height: 40px;
+  margin: 10px;
 }
 </style>

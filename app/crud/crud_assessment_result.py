@@ -1,6 +1,7 @@
 # app/crud/crud_assessment_result.py
 import json
 from datetime import datetime
+import pytz
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -11,6 +12,9 @@ from app.schemas.examinee import BaseModel # 仅用于类型提示
 from typing import List, Tuple
 from typing import Dict
 from sqlalchemy.orm import selectinload
+
+# 定义北京时区
+BEIJING_TZ = pytz.timezone('Asia/Shanghai')
 
 
 
@@ -39,10 +43,12 @@ class CRUDAssessmentResult(CRUDBase[AssessmentResult, BaseModel, BaseModel]):
 
         # 2. 不存在则尝试创建，使用异常捕获处理并发
         try:
+            # 统一使用北京时间，并转换为naive datetime存储
+            now_beijing = datetime.now(BEIJING_TZ)
             session = AssessmentResult(
                 assessment_id=assessment_id,
                 examinee_id=examinee_id,
-                start_time=datetime.utcnow()
+                start_time=now_beijing.replace(tzinfo=None)  # 去掉时区信息，存储为naive datetime
             )
             db.add(session)
             db.flush()  # 先 flush 检测冲突
